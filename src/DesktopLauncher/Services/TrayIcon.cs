@@ -53,8 +53,13 @@ public sealed class TrayIcon : IDisposable
         }
     }
 
-    private static Icon LoadIcon() =>
-        (Environment.ProcessPath is { } path ? Icon.ExtractAssociatedIcon(path) : null) ?? SystemIcons.Application;
+    private static Icon LoadIcon()
+    {
+        var resource = System.Windows.Application.GetResourceStream(new Uri("pack://application:,,,/Assets/app.ico"));
+        if (resource is null) return SystemIcons.Application;
+        using var stream = resource.Stream;
+        return new Icon(stream, SystemInformation.SmallIconSize);
+    }
 
     public void Dispose()
     {
