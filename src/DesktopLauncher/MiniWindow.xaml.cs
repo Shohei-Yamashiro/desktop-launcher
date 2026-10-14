@@ -26,6 +26,8 @@ public partial class MiniWindow : Window
         PlaceInitially();
     }
 
+    public Rect Bounds => new(Left, Top, Width, Height);
+
     public event Action? OpenRequested;
 
     public event Action? ExitRequested;
