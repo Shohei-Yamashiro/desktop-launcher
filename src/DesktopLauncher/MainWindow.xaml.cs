@@ -17,6 +17,8 @@ public partial class MainWindow : Window
 
     private readonly ItemStore _store = new();
     private readonly LauncherTree _tree = new();
+    private readonly SettingsStore _settingsStore;
+    private readonly AppSettings _settings;
     private int _modalDepth;
     private bool _exiting;
 
@@ -25,9 +27,11 @@ public partial class MainWindow : Window
     private bool _dragging;
     private LauncherItem? _dropTarget;
 
-    public MainWindow()
+    public MainWindow(SettingsStore settingsStore, AppSettings settings)
     {
         InitializeComponent();
+        _settingsStore = settingsStore;
+        _settings = settings;
 
         Tree.ItemsSource = _tree.Roots;
         _tree.Roots.CollectionChanged += (_, _) => UpdateEmptyText();
@@ -362,7 +366,7 @@ public partial class MainWindow : Window
         }
         else if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
         {
-            AddPaths(paths, parent, index);
+            AddDroppedPaths(paths, parent, index);
         }
         else if (TryGetDroppedUrl(e.Data) is { } url)
         {
@@ -439,9 +443,13 @@ public partial class MainWindow : Window
 
     private void Window_Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths) AddPaths(paths, null, -1);
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths) AddDroppedPaths(paths, null, -1);
         else if (TryGetDroppedUrl(e.Data) is { } url) AddPaths([url], null, -1);
     }
+
+    /// <summary>Runs after the drop returns, so Explorer has released the files before originals are recycled.</summary>
+    private void AddDroppedPaths(string[] paths, LauncherItem? parent, int index) =>
+        Dispatcher.BeginInvoke(() => AddPaths(paths, parent, index));
 
     private static string? TryGetDroppedUrl(IDataObject data)
     {
@@ -575,12 +583,13 @@ public partial class MainWindow : Window
     private void AddPaths(IEnumerable<string> paths, LauncherItem? parent, int index)
     {
         var existing = _tree.All().Where(n => !n.IsGroup).Select(n => n.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var notRecycled = new List<string>();
         LauncherItem? last = null;
         foreach (var path in paths)
         {
             if (!existing.Add(path)) continue;
 
-            var item = LauncherItem.CreateItem(DefaultName(path), path);
+            var item = LauncherItem.CreateItem(DefaultName(path), CaptureShortcut(path, notRecycled));
             item.Icon = LoadIcon(item);
             _tree.Insert(item, parent, index);
             if (index >= 0) index++;
@@ -588,6 +597,34 @@ public partial class MainWindow : Window
         }
 
         if (last is not null) Reselect(last);
+        if (notRecycled.Count > 0)
+        {
+            ShowError("ランチャーには登録しましたが、元のショートカットをごみ箱に移せませんでした。\n"
+                + "（管理者の権限が必要な場所にある可能性があります）\n\n" + string.Join("\n", notRecycled));
+        }
+    }
+
+    /// <summary>
+    /// When enabled, copies a shortcut into the app folder and recycles the original.
+    /// Returns the path the item should point to.
+    /// </summary>
+    private string CaptureShortcut(string path, List<string> notRecycled)
+    {
+        if (!_settings.MoveShortcutsToLauncher || !ShortcutFiles.IsShortcut(path) || _store.IsInLinksDirectory(path)) return path;
+
+        string copy;
+        try
+        {
+            copy = ShortcutFiles.CopyInto(path, _store.LinksDirectory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            notRecycled.Add(path);
+            return path;
+        }
+
+        if (!ShortcutFiles.MoveToRecycleBin(path)) notRecycled.Add(path);
+        return copy;
     }
 
     private void MoveInto(LauncherItem node, LauncherItem? group)
@@ -632,7 +669,10 @@ public partial class MainWindow : Window
         }
 
         var startInfo = new ProcessStartInfo(item.Path) { UseShellExecute = true };
-        if (File.Exists(item.Path)) startInfo.WorkingDirectory = Path.GetDirectoryName(item.Path) ?? "";
+        if (File.Exists(item.Path) && !ShortcutFiles.IsShortcut(item.Path))
+        {
+            startInfo.WorkingDirectory = Path.GetDirectoryName(item.Path) ?? "";
+        }
 
         try
         {
@@ -656,12 +696,22 @@ public partial class MainWindow : Window
             ShowError("URL には保存場所がありません。");
             return;
         }
-        if (!File.Exists(item.Path) && !Directory.Exists(item.Path))
+        var path = item.Path;
+        if (_store.IsInLinksDirectory(path))
         {
-            ShowError($"見つかりません。\n{item.Path}");
+            path = ShortcutFiles.ResolveTarget(path) ?? "";
+            if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && !uri.IsFile)
+            {
+                ShowError($"このショートカットのリンク先は URL です。\n{path}");
+                return;
+            }
+        }
+        if (!File.Exists(path) && !Directory.Exists(path))
+        {
+            ShowError($"見つかりません。\n{(path.Length > 0 ? path : item.Path)}");
             return;
         }
-        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{item.Path}\"") { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
     }
 
     private void Rename(LauncherItem node)
@@ -680,14 +730,28 @@ public partial class MainWindow : Window
         {
             var count = _tree.All().Count(n => IsDescendant(n, node));
             var answer = WithModal(() => MessageBox.Show(this,
-                $"グループ「{node.Name}」と、中の {count} 件をランチャーから削除しますか？\n（ファイルやフォルダー自体は削除されません）",
+                $"グループ「{node.Name}」と、中の {count} 件をランチャーから削除しますか？\n"
+                + "（ファイルやフォルダー自体は削除されません。取り込んだショートカットはごみ箱に移ります）",
                 Title, MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel));
             if (answer != MessageBoxResult.OK) return;
         }
 
+        var captured = _tree.All()
+            .Where(n => (n == node || IsDescendant(n, node)) && !n.IsGroup && _store.IsInLinksDirectory(n.Path))
+            .Select(n => n.Path)
+            .ToList();
+
         _tree.Remove(node);
         if (IsSearching) UpdateSearch();
         Save();
+
+        foreach (var path in captured.Where(File.Exists)) ShortcutFiles.MoveToRecycleBin(path);
+    }
+
+    private void Settings_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new SettingsWindow(_settingsStore, _settings) { Owner = this };
+        WithModal(dialog.ShowDialog);
     }
 
     private static bool IsDescendant(LauncherItem node, LauncherItem ancestor)

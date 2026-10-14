@@ -73,6 +73,31 @@ public sealed class ItemStoreTests : IDisposable
     }
 
     [Fact]
+    public void PathsInsideAppFolder_AreSavedRelative_AndFollowTheFolderWhenMoved()
+    {
+        var oldApp = Path.Combine(_dir, "old");
+        var store = new ItemStore(Path.Combine(oldApp, "data"));
+        var tree = new LauncherTree();
+        tree.Insert(LauncherItem.CreateItem("メモ", Path.Combine(store.LinksDirectory, "メモ.lnk")), null);
+        tree.Insert(LauncherItem.CreateItem("メモ帳", @"C:\Windows\notepad.exe"), null);
+        store.Save(tree);
+
+        var json = File.ReadAllText(store.FilePath);
+        Assert.Contains(@"data\\links\\メモ.lnk", json);
+        Assert.DoesNotContain(oldApp.Replace(@"\", @"\\"), json);
+
+        var newApp = Path.Combine(_dir, "new");
+        Directory.Move(oldApp, newApp);
+        var moved = new ItemStore(Path.Combine(newApp, "data"));
+        var loaded = new LauncherTree();
+        moved.Load(loaded);
+
+        Assert.Equal(Path.Combine(newApp, "data", "links", "メモ.lnk"), loaded.Roots[0].Path);
+        Assert.True(moved.IsInLinksDirectory(loaded.Roots[0].Path));
+        Assert.Equal(@"C:\Windows\notepad.exe", loaded.Roots[1].Path);
+    }
+
+    [Fact]
     public void Load_BrokenFile_IsMovedAsideAndReported()
     {
         Directory.CreateDirectory(_dir);
