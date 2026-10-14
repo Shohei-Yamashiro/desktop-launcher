@@ -15,6 +15,20 @@
 
         <Border Height="1" Margin="0,16" Background="{StaticResource LineBrush}" />
 
+        <DockPanel>
+            <Border DockPanel.Dock="Right" Background="{StaticResource ControlBrush}" BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="1" CornerRadius="7" Padding="2">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="CompactRadio" Content="狭い" GroupName="RowSpacing" Style="{StaticResource Segment}" />
+                    <RadioButton x:Name="NormalRadio" Content="標準" GroupName="RowSpacing" Style="{StaticResource Segment}" />
+                    <RadioButton x:Name="RelaxedRadio" Content="広い" GroupName="RowSpacing" Style="{StaticResource Segment}" />
+                </StackPanel>
+            </Border>
+            <TextBlock Text="リストの行間" VerticalAlignment="Center" />
+        </DockPanel>
+
+        <Border Height="1" Margin="0,16" Background="{StaticResource LineBrush}" />
+
         <CheckBox x:Name="StartupBox" Content="Windows 起動時に開始" />
         <TextBlock Margin="26,6,0,0" TextWrapping="Wrap" FontSize="12" LineHeight="19" Style="{StaticResource SecondaryText}"
                    Text="オンにすると、Windows のスタートアップ（レジストリの HKCU\…\Run）に登録します。" />

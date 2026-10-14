@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace DesktopLauncher.Services;
 
@@ -11,6 +12,26 @@ public sealed class AppSettings
 
     /// <summary>Copy registered .lnk/.url files into the app folder and move the originals to the Recycle Bin.</summary>
     public bool MoveShortcutsToLauncher { get; set; } = true;
+
+    public RowSpacing RowSpacing { get; set; } = RowSpacing.Normal;
+}
+
+public enum RowSpacing
+{
+    Compact,
+    Normal,
+    Relaxed,
+}
+
+public static class RowSpacingExtensions
+{
+    /// <summary>Space above and below each row's content, in DIPs.</summary>
+    public static double VerticalPadding(this RowSpacing spacing) => spacing switch
+    {
+        RowSpacing.Compact => 1,
+        RowSpacing.Relaxed => 6,
+        _ => 3,
+    };
 }
 
 /// <summary>
@@ -18,7 +39,11 @@ public sealed class AppSettings
 /// </summary>
 public sealed class SettingsStore
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() },
+    };
 
     public SettingsStore(string? dataDirectory = null)
     {

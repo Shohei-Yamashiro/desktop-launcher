@@ -28,7 +28,7 @@
         </Style>
 
         <Style x:Key="RowStyle" TargetType="Border">
-            <Setter Property="Padding" Value="4,3,8,3" />
+            <Setter Property="Padding" Value="{DynamicResource RowPadding}" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
             <Setter Property="BorderThickness" Value="0" />
@@ -229,6 +229,7 @@
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                             <Setter Property="ToolTip" Value="{Binding Path}" />
+                            <Setter Property="Padding" Value="{DynamicResource SearchRowPadding}" />
                             <EventSetter Event="MouseLeftButtonUp" Handler="SearchItem_MouseLeftButtonUp" />
                         </Style>
                     </ListBox.ItemContainerStyle>
