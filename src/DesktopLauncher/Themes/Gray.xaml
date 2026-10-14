@@ -221,6 +221,16 @@
                             <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
                             <Setter TargetName="Check" Property="Visibility" Value="Visible" />
                         </Trigger>
+                        <!-- Tag="inherited": the value already applies from elsewhere, so "off" shows a faint check -->
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsChecked" Value="False" />
+                                <Condition Property="Tag" Value="inherited" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                            <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                            <Setter TargetName="Check" Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+                        </MultiTrigger>
                         <Trigger Property="IsChecked" Value="{x:Null}">
                             <Setter TargetName="Box" Property="Background" Value="{StaticResource TextTertiaryBrush}" />
                             <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource TextTertiaryBrush}" />

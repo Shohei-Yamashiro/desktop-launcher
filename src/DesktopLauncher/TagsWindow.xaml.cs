@@ -30,7 +30,8 @@ public partial class TagsWindow : Window
             {
                 var count = nodes.Count(n => n.HasTag(tag));
                 bool? state = count == 0 ? false : count == nodes.Count ? true : null;
-                return new TagOption(tag, brushFor(tag), state, InheritedText(tag, nodes));
+                return new TagOption(tag, brushFor(tag), state, InheritedText(tag, nodes),
+                    inheritsAll: nodes.All(n => n.InheritedFrom(tag) is not null));
             })
             .OrderBy(o => o.InheritedText is null ? 1 : 0));
 
@@ -39,7 +40,8 @@ public partial class TagsWindow : Window
         if (_options.Any(o => o.IsMixed)) notes.Add("「－」は一部に付いているタグ。そのままなら変更しません。");
         if (_options.Any(o => o.InheritedText is not null))
         {
-            notes.Add("「継承」は上位のグループから付いているタグ。チェックすると項目自身にも付き、グループから外しても残ります。");
+            notes.Add("薄いチェックは上位のグループから継承しているタグで、ここでは外せません。"
+                + "チェックすると項目自身にも付き、グループから外しても残ります。");
         }
         ItemNameText.Text = heading;
         NoteText.Text = string.Join("\n", notes);
@@ -112,13 +114,19 @@ public partial class TagsWindow : Window
         return count == 0 ? null : count == nodes.Count ? "すべて継承" : $"{count} 件が継承";
     }
 
-    public sealed class TagOption(string name, Brush brush, bool? isChecked, string? inheritedText = null)
+    public sealed class TagOption(string name, Brush brush, bool? isChecked, string? inheritedText = null, bool inheritsAll = false)
     {
         public string Name { get; } = name;
 
         public Brush Brush { get; } = brush;
 
         public string? InheritedText { get; } = inheritedText;
+
+        /// <summary>
+        /// "inherited" when every node inherits the tag, which makes the theme's check box show a faint
+        /// check while unchecked: clearing it cannot take the tag away.
+        /// </summary>
+        public string? CheckHint { get; } = inheritsAll ? "inherited" : null;
 
         /// <summary>Only some of the nodes have the tag, so "unchanged" is a valid choice.</summary>
         public bool IsMixed { get; } = isChecked is null;
