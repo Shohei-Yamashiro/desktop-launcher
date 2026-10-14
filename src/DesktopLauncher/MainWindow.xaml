@@ -28,7 +28,7 @@
         </Style>
 
         <Style x:Key="RowStyle" TargetType="Border">
-            <Setter Property="Padding" Value="4,6,10,6" />
+            <Setter Property="Padding" Value="4,3,8,3" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
             <Setter Property="BorderThickness" Value="0" />
@@ -79,8 +79,12 @@
             </Style.Triggers>
         </Style>
 
+        <!-- The UI font draws glyphs about 1px below the middle of its line box. -->
+        <TranslateTransform x:Key="OpticalCenter" Y="-1" />
+
         <Style x:Key="NameText" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="RenderTransform" Value="{StaticResource OpticalCenter}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsGroup}" Value="True">
@@ -93,6 +97,7 @@
             <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="RenderTransform" Value="{StaticResource OpticalCenter}" />
         </Style>
     </Window.Resources>
 
@@ -229,7 +234,7 @@
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <DockPanel Margin="0,2">
+                            <DockPanel>
                                 <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" Margin="0,0,10,0" />
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Location}" Style="{StaticResource MetaText}"
                                            Margin="12,0,0,0" />
