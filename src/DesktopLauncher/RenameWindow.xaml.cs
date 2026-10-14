@@ -4,9 +4,10 @@ namespace DesktopLauncher;
 
 public partial class RenameWindow : Window
 {
-    public RenameWindow(string currentName)
+    public RenameWindow(string currentName, string? title = null)
     {
         InitializeComponent();
+        if (title is not null) Title = title;
         NameBox.Text = currentName;
         Loaded += (_, _) =>
         {

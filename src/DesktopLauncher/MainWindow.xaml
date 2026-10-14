@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Desktop Launcher"
         Icon="Assets/app.ico"
-        Width="760" Height="520" MinWidth="420" MinHeight="300"
+        Width="480" Height="600" MinWidth="360" MinHeight="320"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False"
         Topmost="True"
@@ -13,32 +13,77 @@
         Drop="Window_Drop"
         Deactivated="Window_Deactivated">
     <Window.Resources>
-        <Style x:Key="ToolButton" TargetType="Button">
-            <Setter Property="Padding" Value="12,6" />
-            <Setter Property="Margin" Value="8,0,0,0" />
+        <Style x:Key="ToolButton" TargetType="ButtonBase">
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Margin" Value="0,0,6,0" />
         </Style>
-        <ContextMenu x:Key="ItemMenu" x:Shared="False">
-            <MenuItem Header="開く" Click="Open_Click" FontWeight="Bold" />
-            <MenuItem Header="ファイルの場所を開く" Click="OpenLocation_Click" />
-            <Separator />
-            <MenuItem Header="名前を変更" Click="Rename_Click" />
-            <MenuItem Header="ランチャーから削除" Click="Remove_Click" />
-        </ContextMenu>
+
+        <Style x:Key="RowStyle" TargetType="Border">
+            <Setter Property="Padding" Value="4,3" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="#2F80ED" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="ToolTip" Value="{Binding Path}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter Property="ToolTip" Value="{x:Null}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding DropPosition}" Value="Before">
+                    <Setter Property="BorderThickness" Value="0,2,0,0" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding DropPosition}" Value="After">
+                    <Setter Property="BorderThickness" Value="0,0,0,2" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding DropPosition}" Value="Into">
+                    <Setter Property="Background" Value="#DCEBFF" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ItemIcon" TargetType="Image">
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="GroupGlyph" TargetType="TextBlock">
+            <Setter Property="Text" Value="&#xE8B7;" />
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Foreground" Value="#2F80ED" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="NameText" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E1E4E8" BorderThickness="0,0,0,1" Padding="12,10">
-            <DockPanel>
-                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Content="ファイルを追加" Style="{StaticResource ToolButton}" Click="AddFile_Click" />
-                    <Button Content="フォルダーを追加" Style="{StaticResource ToolButton}" Click="AddFolder_Click" />
-                    <ToggleButton x:Name="PinButton" Content="固定" Padding="12,6" Margin="8,0,0,0"
-                                  ToolTip="オンにすると、他のウィンドウをクリックしても隠れません。&#x0a;エクスプローラーからドラッグして追加するときに使います。" />
-                </StackPanel>
+            <StackPanel>
                 <Grid>
                     <TextBox x:Name="SearchBox" Padding="6,5" VerticalContentAlignment="Center"
                              TextChanged="SearchBox_TextChanged" PreviewKeyDown="SearchBox_PreviewKeyDown" />
-                    <TextBlock Text="名前で絞り込み（Enter で先頭を起動、Esc で隠す）" Foreground="#9AA0A6" Margin="10,0,0,0"
+                    <TextBlock Text="名前で検索（Enter で先頭を起動、Esc で小さくする）" Foreground="#9AA0A6" Margin="10,0,0,0"
                                VerticalAlignment="Center" IsHitTestVisible="False">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
@@ -52,34 +97,75 @@
                         </TextBlock.Style>
                     </TextBlock>
                 </Grid>
-            </DockPanel>
+                <DockPanel Margin="0,8,0,0">
+                    <ToggleButton x:Name="PinButton" DockPanel.Dock="Right" Content="固定" Style="{StaticResource ToolButton}" Margin="0"
+                                  ToolTip="オンにすると、他のウィンドウをクリックしても小さくなりません。&#x0a;エクスプローラーからドラッグして追加するときに使います。" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="＋ファイル" Style="{StaticResource ToolButton}" Click="AddFile_Click"
+                                ToolTip="選んでいるグループに追加します" />
+                        <Button Content="＋フォルダー" Style="{StaticResource ToolButton}" Click="AddFolder_Click"
+                                ToolTip="選んでいるグループに追加します" />
+                        <Button Content="＋グループ" Style="{StaticResource ToolButton}" Click="AddGroup_Click"
+                                ToolTip="選んでいるグループの中に作ります" />
+                    </StackPanel>
+                </DockPanel>
+            </StackPanel>
         </Border>
 
         <Grid>
-            <ListBox x:Name="ItemsList" Background="Transparent" BorderThickness="0" Padding="8"
+            <TreeView x:Name="Tree" Background="Transparent" BorderThickness="0" Padding="6"
+                      AllowDrop="True"
+                      PreviewMouseLeftButtonDown="Tree_PreviewMouseLeftButtonDown"
+                      PreviewMouseMove="Tree_PreviewMouseMove"
+                      PreviewMouseLeftButtonUp="Tree_PreviewMouseLeftButtonUp"
+                      KeyDown="Tree_KeyDown"
+                      ContextMenuOpening="List_ContextMenuOpening"
+                      DragOver="Tree_DragOver"
+                      DragLeave="Tree_DragLeave"
+                      Drop="Tree_Drop">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                        <Setter Property="Padding" Value="0" />
+                    </Style>
+                </TreeView.ItemContainerStyle>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <Border Tag="row" Style="{StaticResource RowStyle}">
+                            <DockPanel>
+                                <Grid Width="20" Height="20" Margin="0,0,8,0">
+                                    <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" />
+                                    <TextBlock Style="{StaticResource GroupGlyph}" />
+                                </Grid>
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding ChildCountText}" Foreground="#9AA0A6"
+                                           Margin="8,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
+                            </DockPanel>
+                        </Border>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+
+            <ListBox x:Name="SearchList" Background="Transparent" BorderThickness="0" Padding="6"
+                     Visibility="Collapsed" HorizontalContentAlignment="Stretch"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     KeyDown="ItemsList_KeyDown">
-                <ListBox.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel />
-                    </ItemsPanelTemplate>
-                </ListBox.ItemsPanel>
+                     KeyDown="SearchList_KeyDown"
+                     ContextMenuOpening="List_ContextMenuOpening">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
-                        <Setter Property="Margin" Value="4" />
-                        <Setter Property="Padding" Value="0" />
                         <Setter Property="ToolTip" Value="{Binding Path}" />
-                        <EventSetter Event="MouseLeftButtonUp" Handler="Item_MouseLeftButtonUp" />
-                        <Setter Property="ContextMenu" Value="{StaticResource ItemMenu}" />
+                        <EventSetter Event="MouseLeftButtonUp" Handler="SearchItem_MouseLeftButtonUp" />
                     </Style>
                 </ListBox.ItemContainerStyle>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
-                        <StackPanel Width="96" Height="92" Margin="4">
-                            <Image Source="{Binding Icon}" Width="32" Height="32" Margin="0,10,0,6" />
-                            <TextBlock Text="{Binding Name}" TextAlignment="Center" TextWrapping="Wrap"
-                                       TextTrimming="CharacterEllipsis" MaxHeight="36" />
-                        </StackPanel>
+                        <DockPanel Margin="2,3">
+                            <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" Margin="0,0,8,0" />
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding Location}" Foreground="#9AA0A6"
+                                       Margin="12,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
+                        </DockPanel>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>

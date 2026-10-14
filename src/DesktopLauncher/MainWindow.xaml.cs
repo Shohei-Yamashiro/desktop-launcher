@@ -1,11 +1,10 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using DesktopLauncher.Models;
 using DesktopLauncher.Services;
 using Microsoft.Win32;
@@ -14,25 +13,31 @@ namespace DesktopLauncher;
 
 public partial class MainWindow : Window
 {
+    private const string NodeFormat = "DesktopLauncher.Node";
+
     private readonly ItemStore _store = new();
-    private readonly ObservableCollection<LauncherItem> _items = [];
-    private readonly ICollectionView _view;
+    private readonly LauncherTree _tree = new();
     private int _modalDepth;
     private bool _exiting;
+
+    private Point _pressPoint;
+    private LauncherItem? _pressedNode;
+    private bool _dragging;
+    private LauncherItem? _dropTarget;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        _view = CollectionViewSource.GetDefaultView(_items);
-        _view.Filter = MatchesSearch;
-        ItemsList.ItemsSource = _view;
-        _items.CollectionChanged += (_, _) => UpdateEmptyText();
+        Tree.ItemsSource = _tree.Roots;
+        _tree.Roots.CollectionChanged += (_, _) => UpdateEmptyText();
 
         LoadItems();
     }
 
     public event Action? ClosedToTray;
+
+    private bool IsSearching => SearchBox.Text.Trim().Length > 0;
 
     public void ShowLauncher()
     {
@@ -46,7 +51,8 @@ public partial class MainWindow : Window
     public void HideLauncher()
     {
         SearchBox.Clear();
-        ItemsList.SelectedIndex = -1;
+        SetDropTarget(null, DropPosition.None);
+        Save();
         Hide();
     }
 
@@ -56,7 +62,11 @@ public partial class MainWindow : Window
         else ShowLauncher();
     }
 
-    public void PrepareExit() => _exiting = true;
+    public void PrepareExit()
+    {
+        _exiting = true;
+        Save();
+    }
 
     protected override void OnClosing(CancelEventArgs e)
     {
@@ -90,7 +100,7 @@ public partial class MainWindow : Window
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
-        if (_modalDepth == 0 && PinButton.IsChecked != true && !_exiting) HideLauncher();
+        if (_modalDepth == 0 && !_dragging && PinButton.IsChecked != true && !_exiting) HideLauncher();
     }
 
     /// <summary>Opening a dialog deactivates this window, which must not hide it.</summary>
@@ -111,11 +121,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            foreach (var item in _store.Load())
-            {
-                item.Icon = LoadIcon(item);
-                _items.Add(item);
-            }
+            _store.Load(_tree);
+            foreach (var node in _tree.All()) node.Icon = LoadIcon(node);
         }
         catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
         {
@@ -125,21 +132,40 @@ public partial class MainWindow : Window
         UpdateEmptyText();
     }
 
-    private bool MatchesSearch(object obj)
+    // ---- Search ----
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateSearch();
+
+    private void UpdateSearch()
     {
-        var query = SearchBox.Text.Trim();
-        return query.Length == 0
-            || (obj is LauncherItem item && item.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+        if (!IsSearching)
+        {
+            SearchList.ItemsSource = null;
+            SearchList.Visibility = Visibility.Collapsed;
+            Tree.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            var query = SearchBox.Text.Trim();
+            var results = _tree.All()
+                .Where(n => !n.IsGroup && n.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+                .ToList();
+            SearchList.ItemsSource = results;
+            SearchList.SelectedIndex = results.Count > 0 ? 0 : -1;
+            SearchList.Visibility = Visibility.Visible;
+            Tree.Visibility = Visibility.Collapsed;
+        }
+        UpdateEmptyText();
     }
 
     private void UpdateEmptyText()
     {
-        if (_items.Count == 0)
+        if (_tree.Roots.Count == 0)
         {
-            EmptyText.Text = "ここにファイルやフォルダー、URL をドラッグして追加できます。\n右上のボタンからも追加できます。";
+            EmptyText.Text = "ここにファイルやフォルダー、URL をドラッグして追加できます。\n「＋グループ」で階層を作れます。";
             EmptyText.Visibility = Visibility.Visible;
         }
-        else if (_view.IsEmpty)
+        else if (IsSearching && SearchList.Items.Count == 0)
         {
             EmptyText.Text = "一致する項目がありません。";
             EmptyText.Visibility = Visibility.Visible;
@@ -150,111 +176,244 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        _view.Refresh();
-        UpdateEmptyText();
-    }
-
     private void SearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         switch (e.Key)
         {
             case Key.Enter:
-                if (_view.Cast<LauncherItem>().FirstOrDefault() is { } first) Launch(first);
-                e.Handled = true;
-                break;
-            case Key.Down:
-                if (!_view.IsEmpty)
+                if (IsSearching)
                 {
-                    ItemsList.SelectedIndex = 0;
-                    (ItemsList.ItemContainerGenerator.ContainerFromIndex(0) as ListBoxItem)?.Focus();
+                    if (SearchList.SelectedItem is LauncherItem hit) Launch(hit);
+                }
+                else if (Tree.SelectedItem is LauncherItem { IsGroup: false } selected)
+                {
+                    Launch(selected);
                 }
                 e.Handled = true;
                 break;
+            case Key.Down:
+                if (IsSearching) FocusSearchResult();
+                else FocusTree();
+                e.Handled = true;
+                break;
         }
     }
 
-    private void ItemsList_KeyDown(object sender, KeyEventArgs e)
+    private void FocusSearchResult()
     {
-        if (ItemsList.SelectedItem is not LauncherItem item) return;
+        if (SearchList.Items.Count == 0) return;
+        if (SearchList.SelectedIndex < 0) SearchList.SelectedIndex = 0;
+        (SearchList.ItemContainerGenerator.ContainerFromIndex(SearchList.SelectedIndex) as ListBoxItem)?.Focus();
+    }
 
-        switch (e.Key)
+    private void FocusTree()
+    {
+        if (_tree.Roots.Count == 0) return;
+        var node = Tree.SelectedItem as LauncherItem ?? _tree.Roots[0];
+        node.IsSelected = true;
+        (Tree.ItemContainerGenerator.ContainerFromItem(node) as TreeViewItem)?.Focus();
+    }
+
+    private void SearchList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (SearchList.SelectedItem is LauncherItem node) HandleNodeKey(node, e);
+    }
+
+    private void SearchItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is ListBoxItem { DataContext: LauncherItem node }) Launch(node);
+    }
+
+    // ---- Tree: click, keys ----
+
+    private void Tree_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (Tree.SelectedItem is LauncherItem node) HandleNodeKey(node, e);
+    }
+
+    private void HandleNodeKey(LauncherItem node, KeyEventArgs e)
+    {
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        if (Keyboard.Modifiers == ModifierKeys.Alt && key is Key.Up or Key.Down)
+        {
+            var moved = key == Key.Up ? _tree.MoveUp(node) : _tree.MoveDown(node);
+            if (moved) Reselect(node);
+            e.Handled = true;
+            return;
+        }
+
+        switch (key)
         {
             case Key.Enter:
-                Launch(item);
+                if (node.IsGroup) node.IsExpanded = !node.IsExpanded;
+                else Launch(node);
                 e.Handled = true;
                 break;
             case Key.Delete:
-                Remove(item);
+                Remove(node);
                 e.Handled = true;
                 break;
             case Key.F2:
-                Rename(item);
+                Rename(node);
                 e.Handled = true;
                 break;
         }
     }
 
-    private void Item_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void Tree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (sender is ListBoxItem { DataContext: LauncherItem item }) Launch(item);
+        _pressPoint = e.GetPosition(Tree);
+        _pressedNode = RowFrom(e.OriginalSource)?.Node;
     }
 
-    private void Open_Click(object sender, RoutedEventArgs e)
+    private void Tree_PreviewMouseMove(object sender, MouseEventArgs e)
     {
-        if (ItemFrom(sender) is { } item) Launch(item);
-    }
+        if (_pressedNode is null || e.LeftButton != MouseButtonState.Pressed || _dragging) return;
 
-    private void OpenLocation_Click(object sender, RoutedEventArgs e)
-    {
-        if (ItemFrom(sender) is not { } item) return;
+        var delta = e.GetPosition(Tree) - _pressPoint;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance
+            && Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance) return;
 
-        if (item.IsUrl)
+        var node = _pressedNode;
+        _pressedNode = null;
+        _dragging = true;
+        try
         {
-            ShowError("URL には保存場所がありません。");
-            return;
+            DragDrop.DoDragDrop(Tree, new DataObject(NodeFormat, node), DragDropEffects.Move);
+        }
+        finally
+        {
+            _dragging = false;
+            SetDropTarget(null, DropPosition.None);
+        }
+    }
+
+    private void Tree_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var pressed = _pressedNode;
+        _pressedNode = null;
+        if (pressed is null || RowFrom(e.OriginalSource)?.Node != pressed) return;
+
+        if (pressed.IsGroup) pressed.IsExpanded = !pressed.IsExpanded;
+        else Launch(pressed);
+    }
+
+    // ---- Tree: drag & drop ----
+
+    private void Tree_DragOver(object sender, DragEventArgs e)
+    {
+        var (target, position) = DropSpot(e);
+        var allowed = false;
+
+        if (e.Data.GetData(NodeFormat) is LauncherItem dragged)
+        {
+            var newParent = position == DropPosition.Into ? target : target?.Parent;
+            allowed = target != dragged && LauncherTree.CanMove(dragged, newParent);
+            e.Effects = allowed ? DragDropEffects.Move : DragDropEffects.None;
+        }
+        else if (e.Data.GetDataPresent(DataFormats.FileDrop) || TryGetDroppedUrl(e.Data) is not null)
+        {
+            allowed = true;
+            e.Effects = DragDropEffects.Link;
+        }
+        else
+        {
+            e.Effects = DragDropEffects.None;
         }
 
-        if (!File.Exists(item.Path) && !Directory.Exists(item.Path))
+        SetDropTarget(allowed ? target : null, position);
+        e.Handled = true;
+    }
+
+    private void Tree_DragLeave(object sender, DragEventArgs e) => SetDropTarget(null, DropPosition.None);
+
+    private void Tree_Drop(object sender, DragEventArgs e)
+    {
+        var (target, position) = DropSpot(e);
+        SetDropTarget(null, DropPosition.None);
+        e.Handled = true;
+
+        var (parent, index) = InsertionPoint(target, position);
+
+        if (e.Data.GetData(NodeFormat) is LauncherItem dragged)
         {
-            ShowError($"見つかりません。\n{item.Path}");
-            return;
+            if (target == dragged) return;
+            if (index >= 0 && _tree.SiblingsOf(dragged) == (parent?.Children ?? _tree.Roots)
+                && _tree.SiblingsOf(dragged).IndexOf(dragged) < index)
+            {
+                index--;
+            }
+            if (!_tree.Move(dragged, parent, index)) return;
+            Reselect(dragged);
         }
-
-        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{item.Path}\"") { UseShellExecute = true });
-    }
-
-    private void Rename_Click(object sender, RoutedEventArgs e)
-    {
-        if (ItemFrom(sender) is { } item) Rename(item);
-    }
-
-    private void Remove_Click(object sender, RoutedEventArgs e)
-    {
-        if (ItemFrom(sender) is { } item) Remove(item);
-    }
-
-    private void AddFile_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = new OpenFileDialog
+        else if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
         {
-            Title = "追加するファイルを選択",
-            Multiselect = true,
-            DereferenceLinks = false,
-        };
-        if (WithModal(() => dialog.ShowDialog(this)) == true) AddPaths(dialog.FileNames);
+            AddPaths(paths, parent, index);
+        }
+        else if (TryGetDroppedUrl(e.Data) is { } url)
+        {
+            AddPaths([url], parent, index);
+        }
     }
 
-    private void AddFolder_Click(object sender, RoutedEventArgs e)
+    private (LauncherItem? Target, DropPosition Position) DropSpot(DragEventArgs e)
     {
-        var dialog = new OpenFolderDialog
+        if (RowFrom(e.OriginalSource) is not { } row) return (null, DropPosition.None);
+
+        var y = e.GetPosition(row.Element).Y;
+        var height = Math.Max(1, row.Element.ActualHeight);
+        if (row.Node.IsGroup)
         {
-            Title = "追加するフォルダーを選択",
-            Multiselect = true,
-        };
-        if (WithModal(() => dialog.ShowDialog(this)) == true) AddPaths(dialog.FolderNames);
+            if (y < height * 0.25) return (row.Node, DropPosition.Before);
+            if (y > height * 0.75) return (row.Node, DropPosition.After);
+            return (row.Node, DropPosition.Into);
+        }
+        return (row.Node, y < height / 2 ? DropPosition.Before : DropPosition.After);
     }
+
+    /// <summary>Where a drop lands: the end of the top level when not over a row.</summary>
+    private (LauncherItem? Parent, int Index) InsertionPoint(LauncherItem? target, DropPosition position)
+    {
+        if (target is null) return (null, -1);
+        if (position == DropPosition.Into) return (target, -1);
+
+        var index = _tree.SiblingsOf(target).IndexOf(target);
+        return (target.Parent, position == DropPosition.After ? index + 1 : index);
+    }
+
+    private void SetDropTarget(LauncherItem? node, DropPosition position)
+    {
+        if (_dropTarget is not null && _dropTarget != node) _dropTarget.DropPosition = DropPosition.None;
+        _dropTarget = node;
+        if (node is not null) node.DropPosition = position;
+    }
+
+    private static (LauncherItem Node, FrameworkElement Element)? RowFrom(object source)
+    {
+        for (var current = source as DependencyObject; current is not null; current = ParentOf(current))
+        {
+            if (current is TreeViewItem) return null;
+            if (current is FrameworkElement { Tag: "row", DataContext: LauncherItem node } row) return (node, row);
+        }
+        return null;
+    }
+
+    private static LauncherItem? NodeFrom(object source)
+    {
+        for (var current = source as DependencyObject; current is not null; current = ParentOf(current))
+        {
+            if (current is FrameworkElement { DataContext: LauncherItem node }) return node;
+            if (current is TreeView or ListBox) return null;
+        }
+        return null;
+    }
+
+    private static DependencyObject? ParentOf(DependencyObject node) =>
+        node is Visual or System.Windows.Media.Media3D.Visual3D
+            ? VisualTreeHelper.GetParent(node)
+            : LogicalTreeHelper.GetParent(node);
+
+    // ---- Window-level drop (outside the list) adds to the top level ----
 
     private void Window_DragOver(object sender, DragEventArgs e)
     {
@@ -266,19 +425,13 @@ public partial class MainWindow : Window
 
     private void Window_Drop(object sender, DragEventArgs e)
     {
-        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
-        {
-            AddPaths(paths);
-        }
-        else if (TryGetDroppedUrl(e.Data) is { } url)
-        {
-            AddPaths([url]);
-        }
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths) AddPaths(paths, null, -1);
+        else if (TryGetDroppedUrl(e.Data) is { } url) AddPaths([url], null, -1);
     }
 
     private static string? TryGetDroppedUrl(IDataObject data)
     {
-        if (data.GetData(DataFormats.UnicodeText) is not string text) return null;
+        if (data.GetDataPresent(NodeFormat) || data.GetData(DataFormats.UnicodeText) is not string text) return null;
         text = text.Trim();
         return Uri.TryCreate(text, UriKind.Absolute, out var uri)
             && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
@@ -286,20 +439,155 @@ public partial class MainWindow : Window
             : null;
     }
 
-    private void AddPaths(IEnumerable<string> paths)
-    {
-        var added = false;
-        foreach (var path in paths)
-        {
-            if (_items.Any(i => string.Equals(i.Path, path, StringComparison.OrdinalIgnoreCase))) continue;
+    // ---- Context menu ----
 
-            var item = new LauncherItem { Name = DefaultName(path), Path = path };
-            item.Icon = LoadIcon(item);
-            _items.Add(item);
-            added = true;
+    private void List_ContextMenuOpening(object sender, ContextMenuEventArgs e)
+    {
+        e.Handled = true;
+        var node = NodeFrom(e.OriginalSource);
+        if (node is not null && sender == Tree) node.IsSelected = true;
+
+        var menu = BuildMenu(node);
+        menu.PlacementTarget = (UIElement)sender;
+        menu.IsOpen = true;
+    }
+
+    private ContextMenu BuildMenu(LauncherItem? node)
+    {
+        var menu = new ContextMenu();
+        if (node is null)
+        {
+            menu.Items.Add(MenuItem("新しいグループ", () => AddGroup(null)));
+            return menu;
         }
 
-        if (added) Save();
+        if (node.IsGroup)
+        {
+            menu.Items.Add(MenuItem(node.IsExpanded ? "閉じる" : "開く", () => node.IsExpanded = !node.IsExpanded, bold: true));
+            menu.Items.Add(MenuItem("この中に新しいグループ", () => AddGroup(node)));
+        }
+        else
+        {
+            menu.Items.Add(MenuItem("開く", () => Launch(node), bold: true));
+            menu.Items.Add(MenuItem("ファイルの場所を開く", () => OpenLocation(node)));
+        }
+        menu.Items.Add(new Separator());
+        menu.Items.Add(MenuItem("名前を変更", () => Rename(node), gesture: "F2"));
+        menu.Items.Add(BuildMoveMenu(node));
+
+        var siblings = _tree.SiblingsOf(node);
+        var index = siblings.IndexOf(node);
+        menu.Items.Add(MenuItem("上へ", () => { if (_tree.MoveUp(node)) Reselect(node); }, gesture: "Alt+↑", enabled: index > 0));
+        menu.Items.Add(MenuItem("下へ", () => { if (_tree.MoveDown(node)) Reselect(node); }, gesture: "Alt+↓", enabled: index < siblings.Count - 1));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(MenuItem("ランチャーから削除", () => Remove(node), gesture: "Delete"));
+        return menu;
+    }
+
+    private MenuItem BuildMoveMenu(LauncherItem node)
+    {
+        var move = new MenuItem { Header = "移動" };
+        if (node.Parent is not null) move.Items.Add(MenuItem("（いちばん上の階層）", () => MoveInto(node, null)));
+
+        foreach (var group in _tree.Groups())
+        {
+            if (group == node.Parent || !LauncherTree.CanMove(node, group)) continue;
+            var indent = new string('　', _tree.Depth(group));
+            move.Items.Add(MenuItem(indent + group.Name, () => MoveInto(node, group)));
+        }
+
+        move.IsEnabled = move.Items.Count > 0;
+        return move;
+    }
+
+    private static MenuItem MenuItem(string header, Action action, bool bold = false, string? gesture = null, bool enabled = true)
+    {
+        var item = new MenuItem
+        {
+            Header = header.Replace("_", "__"),
+            InputGestureText = gesture ?? "",
+            IsEnabled = enabled,
+        };
+        if (bold) item.FontWeight = FontWeights.Bold;
+        item.Click += (_, _) => action();
+        return item;
+    }
+
+    // ---- Commands ----
+
+    private LauncherItem? TargetGroupForAdd()
+    {
+        var selected = IsSearching ? SearchList.SelectedItem as LauncherItem : Tree.SelectedItem as LauncherItem;
+        return selected is null ? null : selected.IsGroup ? selected : selected.Parent;
+    }
+
+    private void AddFile_Click(object sender, RoutedEventArgs e)
+    {
+        var parent = TargetGroupForAdd();
+        var dialog = new OpenFileDialog
+        {
+            Title = "追加するファイルを選択",
+            Multiselect = true,
+            DereferenceLinks = false,
+        };
+        if (WithModal(() => dialog.ShowDialog(this)) == true) AddPaths(dialog.FileNames, parent, -1);
+    }
+
+    private void AddFolder_Click(object sender, RoutedEventArgs e)
+    {
+        var parent = TargetGroupForAdd();
+        var dialog = new OpenFolderDialog
+        {
+            Title = "追加するフォルダーを選択",
+            Multiselect = true,
+        };
+        if (WithModal(() => dialog.ShowDialog(this)) == true) AddPaths(dialog.FolderNames, parent, -1);
+    }
+
+    private void AddGroup_Click(object sender, RoutedEventArgs e) => AddGroup(TargetGroupForAdd());
+
+    private void AddGroup(LauncherItem? parent)
+    {
+        var dialog = new RenameWindow("新しいグループ", "新しいグループ") { Owner = this };
+        if (WithModal(dialog.ShowDialog) != true) return;
+
+        var group = LauncherItem.CreateGroup(dialog.NewName);
+        group.IsExpanded = true;
+        _tree.Insert(group, parent);
+        SearchBox.Clear();
+        Reselect(group);
+    }
+
+    private void AddPaths(IEnumerable<string> paths, LauncherItem? parent, int index)
+    {
+        var existing = _tree.All().Where(n => !n.IsGroup).Select(n => n.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        LauncherItem? last = null;
+        foreach (var path in paths)
+        {
+            if (!existing.Add(path)) continue;
+
+            var item = LauncherItem.CreateItem(DefaultName(path), path);
+            item.Icon = LoadIcon(item);
+            _tree.Insert(item, parent, index);
+            if (index >= 0) index++;
+            last = item;
+        }
+
+        if (last is not null) Reselect(last);
+    }
+
+    private void MoveInto(LauncherItem node, LauncherItem? group)
+    {
+        if (_tree.Move(node, group)) Reselect(node);
+    }
+
+    /// <summary>Expands the path to the node, selects it, and saves.</summary>
+    private void Reselect(LauncherItem node)
+    {
+        for (var group = node.Parent; group is not null; group = group.Parent) group.IsExpanded = true;
+        node.IsSelected = true;
+        if (IsSearching) UpdateSearch();
+        Save();
     }
 
     private static string DefaultName(string path)
@@ -313,14 +601,16 @@ public partial class MainWindow : Window
         return Path.GetFileNameWithoutExtension(path);
     }
 
-    private static System.Windows.Media.ImageSource? LoadIcon(LauncherItem item)
+    private static ImageSource? LoadIcon(LauncherItem item)
     {
+        if (item.IsGroup) return null;
         if (item.IsUrl) return ShellIcon.ForUrl();
         return File.Exists(item.Path) || Directory.Exists(item.Path) ? ShellIcon.ForPath(item.Path) : null;
     }
 
     private void Launch(LauncherItem item)
     {
+        if (item.IsGroup) return;
         if (!item.IsUrl && !File.Exists(item.Path) && !Directory.Exists(item.Path))
         {
             ShowError($"見つかりません。移動または削除された可能性があります。\n{item.Path}");
@@ -345,37 +635,67 @@ public partial class MainWindow : Window
         }
     }
 
-    private void Rename(LauncherItem item)
+    private void OpenLocation(LauncherItem item)
     {
-        var dialog = new RenameWindow(item.Name) { Owner = this };
+        if (item.IsUrl)
+        {
+            ShowError("URL には保存場所がありません。");
+            return;
+        }
+        if (!File.Exists(item.Path) && !Directory.Exists(item.Path))
+        {
+            ShowError($"見つかりません。\n{item.Path}");
+            return;
+        }
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{item.Path}\"") { UseShellExecute = true });
+    }
+
+    private void Rename(LauncherItem node)
+    {
+        var dialog = new RenameWindow(node.Name) { Owner = this };
         if (WithModal(dialog.ShowDialog) != true) return;
 
-        item.Name = dialog.NewName;
-        _view.Refresh();
-        UpdateEmptyText();
+        node.Name = dialog.NewName;
+        if (IsSearching) UpdateSearch();
         Save();
     }
 
-    private void Remove(LauncherItem item)
+    private void Remove(LauncherItem node)
     {
-        _items.Remove(item);
+        if (node.IsGroup && node.Children.Count > 0)
+        {
+            var count = _tree.All().Count(n => IsDescendant(n, node));
+            var answer = WithModal(() => MessageBox.Show(this,
+                $"グループ「{node.Name}」と、中の {count} 件をランチャーから削除しますか？\n（ファイルやフォルダー自体は削除されません）",
+                Title, MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel));
+            if (answer != MessageBoxResult.OK) return;
+        }
+
+        _tree.Remove(node);
+        if (IsSearching) UpdateSearch();
         Save();
+    }
+
+    private static bool IsDescendant(LauncherItem node, LauncherItem ancestor)
+    {
+        for (var group = node.Parent; group is not null; group = group.Parent)
+        {
+            if (group == ancestor) return true;
+        }
+        return false;
     }
 
     private void Save()
     {
         try
         {
-            _store.Save(_items);
+            _store.Save(_tree);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             ShowError($"保存できませんでした。\n{_store.FilePath}\n\n{ex.Message}");
         }
     }
-
-    private static LauncherItem? ItemFrom(object sender) =>
-        (sender as FrameworkElement)?.DataContext as LauncherItem;
 
     private void ShowError(string message) => WithModal(() => IsVisible
         ? MessageBox.Show(this, message, Title, MessageBoxButton.OK, MessageBoxImage.Warning)
