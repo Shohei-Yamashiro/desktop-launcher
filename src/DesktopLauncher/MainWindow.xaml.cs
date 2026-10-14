@@ -33,6 +33,7 @@ public partial class MainWindow : Window
         _settingsStore = settingsStore;
         _settings = settings;
         DarkFrame.Apply(this);
+        ApplyRowSpacing();
 
         Tree.ItemsSource = _tree.Roots;
         _tree.Roots.CollectionChanged += (_, _) => UpdateEmptyText();
@@ -754,7 +755,14 @@ public partial class MainWindow : Window
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new SettingsWindow(_settingsStore, _settings) { Owner = this };
-        WithModal(dialog.ShowDialog);
+        if (WithModal(dialog.ShowDialog) == true) ApplyRowSpacing();
+    }
+
+    private void ApplyRowSpacing()
+    {
+        var vertical = _settings.RowSpacing.VerticalPadding();
+        Resources["RowPadding"] = new Thickness(4, vertical, 8, vertical);
+        Resources["SearchRowPadding"] = new Thickness(8, vertical, 8, vertical);
     }
 
     private static bool IsDescendant(LauncherItem node, LauncherItem ancestor)

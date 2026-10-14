@@ -15,12 +15,21 @@ public partial class SettingsWindow : Window
         _store = store;
         _settings = settings;
         MoveShortcutsBox.IsChecked = settings.MoveShortcutsToLauncher;
+        (settings.RowSpacing switch
+        {
+            RowSpacing.Compact => CompactRadio,
+            RowSpacing.Relaxed => RelaxedRadio,
+            _ => NormalRadio,
+        }).IsChecked = true;
         StartupBox.IsChecked = StartupRegistration.IsEnabled;
     }
 
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
         _settings.MoveShortcutsToLauncher = MoveShortcutsBox.IsChecked == true;
+        _settings.RowSpacing = CompactRadio.IsChecked == true ? RowSpacing.Compact
+            : RelaxedRadio.IsChecked == true ? RowSpacing.Relaxed
+            : RowSpacing.Normal;
         _store.Save(_settings);
 
         try
