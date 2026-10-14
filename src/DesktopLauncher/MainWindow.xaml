@@ -1,6 +1,7 @@
 ﻿<Window x:Class="DesktopLauncher.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:DesktopLauncher.Controls"
         Title="Desktop Launcher"
         Icon="Assets/app.ico"
         Width="480" Height="600" MinWidth="360" MinHeight="320"
@@ -125,6 +126,33 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <controls:TagBrushConverter x:Key="TagBrush" />
+
+        <!-- Name followed by the node's own tags; tags that do not fit end in "…" -->
+        <DataTemplate x:Key="RowTag">
+            <Border BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="1" CornerRadius="8" Padding="6,0,7,1">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse Width="6" Height="6" Fill="{Binding Converter={StaticResource TagBrush}}" Margin="0,1,5,0"
+                             VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <ItemsPanelTemplate x:Key="RowTagsPanel">
+            <controls:OverflowPanel Spacing="4" Foreground="{StaticResource TextTertiaryBrush}" />
+        </ItemsPanelTemplate>
+
+        <Style x:Key="RowTags" TargetType="ItemsControl">
+            <Setter Property="ItemsSource" Value="{Binding Tags}" />
+            <Setter Property="ItemTemplate" Value="{StaticResource RowTag}" />
+            <Setter Property="ItemsPanel" Value="{StaticResource RowTagsPanel}" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
 
         <Style x:Key="MetaText" TargetType="TextBlock">
@@ -261,7 +289,10 @@
                                     </Grid>
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding ChildCountText}" Style="{StaticResource MetaText}"
                                                Margin="8,0,0,0" />
-                                    <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
+                                    <controls:NameTagsPanel HorizontalAlignment="Left">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
+                                        <ItemsControl Style="{StaticResource RowTags}" />
+                                    </controls:NameTagsPanel>
                                 </DockPanel>
                             </Border>
                         </HierarchicalDataTemplate>
@@ -286,7 +317,10 @@
                                 <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" Margin="0,0,10,0" />
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Location}" Style="{StaticResource MetaText}"
                                            Margin="12,0,0,0" />
-                                <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
+                                <controls:NameTagsPanel HorizontalAlignment="Left">
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
+                                    <ItemsControl Style="{StaticResource RowTags}" />
+                                </controls:NameTagsPanel>
                             </DockPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
