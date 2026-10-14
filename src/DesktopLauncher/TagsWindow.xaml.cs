@@ -12,12 +12,15 @@ public partial class TagsWindow : Window
     private readonly ObservableCollection<TagOption> _options;
     private readonly Func<string, Brush> _brushFor;
 
-    public TagsWindow(string itemName, IEnumerable<string> allTags, IReadOnlyList<string> currentTags, Func<string, Brush> brushFor)
+    public TagsWindow(string itemName, bool isGroup, IEnumerable<string> allTags, IReadOnlyList<string> currentTags,
+        Func<string, Brush> brushFor)
     {
         InitializeComponent();
         DarkFrame.Apply(this);
         _brushFor = brushFor;
-        ItemNameText.Text = $"「{itemName}」に付けるタグ";
+        ItemNameText.Text = isGroup
+            ? $"グループ「{itemName}」に付けるタグ\nタグで絞り込むと、このグループの中の項目もすべて表示されます。"
+            : $"「{itemName}」に付けるタグ";
         _options = new(LauncherItem.NormalizeTags(allTags.Concat(currentTags))
             .Select(t => new TagOption(t, brushFor(t), currentTags.Contains(t, StringComparer.CurrentCultureIgnoreCase))));
         TagList.ItemsSource = _options;

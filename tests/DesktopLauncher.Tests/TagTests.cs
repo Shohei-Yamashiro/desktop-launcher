@@ -25,11 +25,43 @@ public sealed class TagTests : IDisposable
     }
 
     [Fact]
-    public void Groups_CannotHaveTags()
+    public void GroupTag_FindsEveryItemInside_WhateverTheirOwnTags()
     {
-        var group = LauncherItem.CreateGroup("仕事");
+        var tree = new LauncherTree();
+        var games = LauncherItem.CreateGroup("ゲーム");
+        var koei = LauncherItem.CreateGroup("信長の野望");
+        var nested = LauncherItem.CreateItem("天道", @"C:\a.lnk");
+        var direct = LauncherItem.CreateItem("Stellaris", @"C:\b.lnk");
+        var outside = LauncherItem.CreateItem("メモ帳", @"C:\Windows\notepad.exe");
+        tree.Insert(games, null);
+        tree.Insert(koei, games);
+        tree.Insert(nested, koei);
+        tree.Insert(direct, games);
+        tree.Insert(outside, null);
+        games.SetTags(["遊び"]);
+        direct.SetTags(["ストラテジー"]);
+        outside.SetTags(["ツール"]);
 
-        Assert.Throws<InvalidOperationException>(() => group.SetTags(["a"]));
+        Assert.Equal([nested, direct], tree.FindItems("", "遊び"));
+        Assert.Equal([direct], tree.FindItems("", "ストラテジー"));
+        Assert.Empty(tree.FindItems("", "存在しない"));
+        Assert.Equal(["ストラテジー", "ツール", "遊び"], tree.AllTags());
+    }
+
+    [Fact]
+    public void GroupTags_SurviveSaveAndLoad()
+    {
+        var store = new ItemStore(_dir);
+        var tree = new LauncherTree();
+        var group = LauncherItem.CreateGroup("ゲーム");
+        group.SetTags(["遊び"]);
+        tree.Insert(group, null);
+        store.Save(tree);
+
+        var loaded = new LauncherTree();
+        store.Load(loaded);
+
+        Assert.Equal(["遊び"], loaded.Roots[0].Tags);
     }
 
     [Fact]

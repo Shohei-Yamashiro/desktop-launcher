@@ -75,6 +75,7 @@ public sealed class ItemStore
         {
             var group = LauncherItem.CreateGroup(dto.Name ?? "グループ");
             group.IsExpanded = dto.Expanded ?? false;
+            if (dto.Tags is not null) group.SetTags(dto.Tags);
             tree.Insert(group, parent);
             foreach (var child in dto.Children) Add(tree, child, group);
         }
@@ -86,9 +87,13 @@ public sealed class ItemStore
         }
     }
 
-    private NodeDto ToDto(LauncherItem node) => node.IsGroup
-        ? new NodeDto { Name = node.Name, Expanded = node.IsExpanded, Children = node.Children.Select(ToDto).ToList() }
-        : new NodeDto { Name = node.Name, Path = ToStored(node.Path), Tags = node.Tags.Count > 0 ? node.Tags.ToList() : null };
+    private NodeDto ToDto(LauncherItem node)
+    {
+        var tags = node.Tags.Count > 0 ? node.Tags.ToList() : null;
+        return node.IsGroup
+            ? new NodeDto { Name = node.Name, Expanded = node.IsExpanded, Tags = tags, Children = node.Children.Select(ToDto).ToList() }
+            : new NodeDto { Name = node.Name, Path = ToStored(node.Path), Tags = tags };
+    }
 
     private string ToStored(string path)
     {

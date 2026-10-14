@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using DesktopLauncher.Controls;
 using DesktopLauncher.Models;
 using DesktopLauncher.Services;
 using Microsoft.Win32;
@@ -35,6 +36,7 @@ public partial class MainWindow : Window
         _settingsStore = settingsStore;
         _settings = settings;
         _tagColors = new TagColors(settings.TagColors);
+        ((TagBrushConverter)Resources["TagBrush"]).Colors = _tagColors;
         DarkFrame.Apply(this);
         ApplyRowSpacing();
 
@@ -201,7 +203,7 @@ public partial class MainWindow : Window
 
     private void EditTags(LauncherItem item)
     {
-        var dialog = new TagsWindow(item.Name, _tree.AllTags(), item.Tags, _tagColors.BrushFor) { Owner = this };
+        var dialog = new TagsWindow(item.Name, item.IsGroup, _tree.AllTags(), item.Tags, _tagColors.BrushFor) { Owner = this };
         if (WithModal(dialog.ShowDialog) != true) return;
 
         item.SetTags(dialog.SelectedTags);
@@ -544,6 +546,7 @@ public partial class MainWindow : Window
         {
             menu.Items.Add(MenuItem(node.IsExpanded ? "閉じる" : "開く", () => node.IsExpanded = !node.IsExpanded, bold: true));
             menu.Items.Add(MenuItem("この中に新しいグループ", () => AddGroup(node)));
+            menu.Items.Add(MenuItem("タグを編集…", () => EditTags(node)));
         }
         else
         {

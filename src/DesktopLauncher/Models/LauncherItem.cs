@@ -73,7 +73,7 @@ public sealed class LauncherItem : INotifyPropertyChanged
         set => SetField(ref _dropPosition, value);
     }
 
-    /// <summary>Tag names in display order; groups have none.</summary>
+    /// <summary>Tag names in display order. A group's tags also apply to everything inside it.</summary>
     public IReadOnlyList<string> Tags
     {
         get => _tags;
@@ -82,12 +82,21 @@ public sealed class LauncherItem : INotifyPropertyChanged
 
     public void SetTags(IEnumerable<string> tags)
     {
-        if (IsGroup) throw new InvalidOperationException("Groups cannot have tags.");
         var normalized = NormalizeTags(tags);
         if (!normalized.SequenceEqual(_tags)) Tags = normalized;
     }
 
     public bool HasTag(string tag) => _tags.Contains(tag, StringComparer.CurrentCultureIgnoreCase);
+
+    /// <summary>True when this node or any enclosing group carries the tag.</summary>
+    public bool HasTagIncludingGroups(string tag)
+    {
+        for (var node = this; node is not null; node = node.Parent)
+        {
+            if (node.HasTag(tag)) return true;
+        }
+        return false;
+    }
 
     /// <summary>Trims, drops blanks and case-insensitive duplicates, and sorts.</summary>
     public static IReadOnlyList<string> NormalizeTags(IEnumerable<string> tags) => tags
