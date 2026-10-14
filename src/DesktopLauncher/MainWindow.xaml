@@ -2,13 +2,16 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Desktop Launcher"
+        Icon="Assets/app.ico"
         Width="760" Height="520" MinWidth="420" MinHeight="300"
         WindowStartupLocation="CenterScreen"
+        ShowInTaskbar="False"
+        Topmost="True"
         Background="#F5F6F8"
         AllowDrop="True"
         DragOver="Window_DragOver"
         Drop="Window_Drop"
-        Loaded="Window_Loaded">
+        Deactivated="Window_Deactivated">
     <Window.Resources>
         <Style x:Key="ToolButton" TargetType="Button">
             <Setter Property="Padding" Value="12,6" />
@@ -29,11 +32,13 @@
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <Button Content="ファイルを追加" Style="{StaticResource ToolButton}" Click="AddFile_Click" />
                     <Button Content="フォルダーを追加" Style="{StaticResource ToolButton}" Click="AddFolder_Click" />
+                    <ToggleButton x:Name="PinButton" Content="固定" Padding="12,6" Margin="8,0,0,0"
+                                  ToolTip="オンにすると、他のウィンドウをクリックしても隠れません。&#x0a;エクスプローラーからドラッグして追加するときに使います。" />
                 </StackPanel>
                 <Grid>
                     <TextBox x:Name="SearchBox" Padding="6,5" VerticalContentAlignment="Center"
                              TextChanged="SearchBox_TextChanged" PreviewKeyDown="SearchBox_PreviewKeyDown" />
-                    <TextBlock Text="名前で絞り込み（Ctrl+F）" Foreground="#9AA0A6" Margin="10,0,0,0"
+                    <TextBlock Text="名前で絞り込み（Enter で先頭を起動、Esc で隠す）" Foreground="#9AA0A6" Margin="10,0,0,0"
                                VerticalAlignment="Center" IsHitTestVisible="False">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
