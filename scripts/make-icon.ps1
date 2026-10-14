@@ -36,18 +36,30 @@ function New-IconPng([int]$size) {
         $pen.Dispose(); $outline.Dispose()
     }
 
-    $tile = 4.6 * $s
-    $gap = 1.6 * $s
-    $origin = ($size - ($tile * 2 + $gap)) / 2
+    # Three list rows; the middle one is the selected row. Small sizes snap to whole pixels to stay crisp.
+    $band = 2.8 * $s
+    $gap = 1.3 * $s
+    $width = 10.6 * $s
+    if ($size -lt 32) { $band = [Math]::Round($band); $gap = [Math]::Max(1, [Math]::Round($gap)); $width = [Math]::Round($width) }
+    $left = [Math]::Round(($size - $width) / 2)
+    $top = [Math]::Round(($size - ($band * 3 + $gap * 2)) / 2)
     $white = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 232, 233, 235))
     $accent = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 255, 196, 61))
-    for ($row = 0; $row -lt 2; $row++) {
-        for ($col = 0; $col -lt 2; $col++) {
-            $x = $origin + $col * ($tile + $gap)
-            $y = $origin + $row * ($tile + $gap)
-            $tilePath = New-RoundedRect $x $y $tile $tile ([Math]::Max(1.0, 1.2 * $s))
-            $g.FillPath($(if ($row -eq 0 -and $col -eq 1) { $accent } else { $white }), $tilePath)
-            $tilePath.Dispose()
+    $slot = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(150, 36, 38, 42))
+    for ($row = 0; $row -lt 3; $row++) {
+        $y = $top + $row * ($band + $gap)
+        $radius = [Math]::Max(0.5, [Math]::Min($band / 2, 0.9 * $s))
+        $bandPath = New-RoundedRect $left $y $width $band $radius
+        $g.FillPath($(if ($row -eq 1) { $accent } else { $white }), $bandPath)
+        $bandPath.Dispose()
+
+        if ($size -ge 32) {
+            # The item's icon at the start of each row.
+            $inset = 0.55 * $s
+            $square = $band - 2 * $inset
+            $slotPath = New-RoundedRect ($left + $inset) ($y + $inset) $square $square ([Math]::Max(0.5, 0.45 * $s))
+            $g.FillPath($slot, $slotPath)
+            $slotPath.Dispose()
         }
     }
 
