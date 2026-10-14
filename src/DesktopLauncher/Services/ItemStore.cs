@@ -1,12 +1,14 @@
 using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using DesktopLauncher.Models;
 
 namespace DesktopLauncher.Services;
 
 /// <summary>
 /// Saves items as JSON under the app folder so nothing is written outside the extracted folder.
+/// A node with "Children" is a group; older flat files (Name/Path only) load as top-level items.
 /// </summary>
 public sealed class ItemStore
 {
@@ -14,6 +16,7 @@ public sealed class ItemStore
     {
         WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
 
     public ItemStore(string? dataDirectory = null)
@@ -26,14 +29,14 @@ public sealed class ItemStore
 
     public string FilePath { get; }
 
-    public List<LauncherItem> Load()
+    public void Load(LauncherTree tree)
     {
-        if (!File.Exists(FilePath)) return [];
+        if (!File.Exists(FilePath)) return;
 
+        List<NodeDto> nodes;
         try
         {
-            var json = File.ReadAllText(FilePath);
-            return JsonSerializer.Deserialize<List<LauncherItem>>(json, JsonOptions) ?? [];
+            nodes = JsonSerializer.Deserialize<List<NodeDto>>(File.ReadAllText(FilePath), JsonOptions) ?? [];
         }
         catch (JsonException)
         {
@@ -41,14 +44,46 @@ public sealed class ItemStore
             File.Move(FilePath, brokenPath);
             throw new InvalidDataException($"保存データを読み込めませんでした。元のファイルは {brokenPath} に退避しました。");
         }
+
+        foreach (var dto in nodes) Add(tree, dto, null);
     }
 
-    public void Save(IEnumerable<LauncherItem> items)
+    public void Save(LauncherTree tree)
     {
         Directory.CreateDirectory(DataDirectory);
-        var json = JsonSerializer.Serialize(items, JsonOptions);
+        var json = JsonSerializer.Serialize(tree.Roots.Select(ToDto).ToList(), JsonOptions);
         var tempPath = FilePath + ".tmp";
         File.WriteAllText(tempPath, json);
         File.Move(tempPath, FilePath, overwrite: true);
+    }
+
+    private static void Add(LauncherTree tree, NodeDto dto, LauncherItem? parent)
+    {
+        if (dto.Children is not null)
+        {
+            var group = LauncherItem.CreateGroup(dto.Name ?? "グループ");
+            group.IsExpanded = dto.Expanded ?? false;
+            tree.Insert(group, parent);
+            foreach (var child in dto.Children) Add(tree, child, group);
+        }
+        else if (!string.IsNullOrWhiteSpace(dto.Path))
+        {
+            tree.Insert(LauncherItem.CreateItem(dto.Name ?? dto.Path, dto.Path), parent);
+        }
+    }
+
+    private static NodeDto ToDto(LauncherItem node) => node.IsGroup
+        ? new NodeDto { Name = node.Name, Expanded = node.IsExpanded, Children = node.Children.Select(ToDto).ToList() }
+        : new NodeDto { Name = node.Name, Path = node.Path };
+
+    private sealed class NodeDto
+    {
+        public string? Name { get; set; }
+
+        public string? Path { get; set; }
+
+        public bool? Expanded { get; set; }
+
+        public List<NodeDto>? Children { get; set; }
     }
 }
