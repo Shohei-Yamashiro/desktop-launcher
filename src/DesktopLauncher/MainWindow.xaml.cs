@@ -356,7 +356,7 @@ public partial class MainWindow : Window
         {
             var results = _tree.FindItems(SearchBox.Text, _activeTag).ToList();
             SearchList.ItemsSource = results;
-            SearchList.SelectedIndex = results.Count > 0 ? 0 : -1;
+            SearchList.SelectedIndex = -1;
             SearchList.Visibility = Visibility.Visible;
             Tree.Visibility = Visibility.Collapsed;
         }
@@ -390,17 +390,8 @@ public partial class MainWindow : Window
         }
         switch (e.Key)
         {
+            // Enter moves to the first result; a second Enter there launches it.
             case Key.Enter:
-                if (IsSearching)
-                {
-                    if (SearchList.SelectedItem is LauncherItem hit) Launch(hit);
-                }
-                else if (SelectedNodes() is [{ IsGroup: false } selected])
-                {
-                    Launch(selected);
-                }
-                e.Handled = true;
-                break;
             case Key.Down:
                 if (IsSearching) FocusSearchResult();
                 else FocusTree();

@@ -224,7 +224,7 @@
                                  LostKeyboardFocus="SearchBox_LostKeyboardFocus" />
                         <TextBlock Text="&#xE721;" Style="{StaticResource Glyph}" HorizontalAlignment="Left" Margin="12,0,0,0"
                                    FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" IsHitTestVisible="False" />
-                        <TextBlock Text="名前・#タグで検索（Enter で起動、Esc で小さくする）" Margin="34,0,0,0"
+                        <TextBlock Text="名前・#タグで検索（Enter で結果を選択、Esc で小さくする）" Margin="34,0,0,0"
                                    VerticalAlignment="Center" IsHitTestVisible="False">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
