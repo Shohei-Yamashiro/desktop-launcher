@@ -23,6 +23,7 @@ public sealed class LauncherItem : INotifyPropertyChanged
     private bool _isExpanded;
     private bool _isSelected;
     private DropPosition _dropPosition;
+    private IReadOnlyList<string> _tags = [];
 
     private LauncherItem(bool isGroup)
     {
@@ -71,6 +72,30 @@ public sealed class LauncherItem : INotifyPropertyChanged
         get => _dropPosition;
         set => SetField(ref _dropPosition, value);
     }
+
+    /// <summary>Tag names in display order; groups have none.</summary>
+    public IReadOnlyList<string> Tags
+    {
+        get => _tags;
+        private set => SetField(ref _tags, value);
+    }
+
+    public void SetTags(IEnumerable<string> tags)
+    {
+        if (IsGroup) throw new InvalidOperationException("Groups cannot have tags.");
+        var normalized = NormalizeTags(tags);
+        if (!normalized.SequenceEqual(_tags)) Tags = normalized;
+    }
+
+    public bool HasTag(string tag) => _tags.Contains(tag, StringComparer.CurrentCultureIgnoreCase);
+
+    /// <summary>Trims, drops blanks and case-insensitive duplicates, and sorts.</summary>
+    public static IReadOnlyList<string> NormalizeTags(IEnumerable<string> tags) => tags
+        .Select(t => t.Trim())
+        .Where(t => t.Length > 0)
+        .Distinct(StringComparer.CurrentCultureIgnoreCase)
+        .Order(StringComparer.CurrentCultureIgnoreCase)
+        .ToArray();
 
     public string ChildCountText => IsGroup ? $"{Children.Count}" : "";
 

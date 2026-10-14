@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -14,6 +15,9 @@ public sealed class AppSettings
     public bool MoveShortcutsToLauncher { get; set; } = true;
 
     public RowSpacing RowSpacing { get; set; } = RowSpacing.Normal;
+
+    /// <summary>Palette index per tag name.</summary>
+    public Dictionary<string, int> TagColors { get; set; } = [];
 }
 
 public enum RowSpacing
@@ -42,6 +46,7 @@ public sealed class SettingsStore
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         Converters = { new JsonStringEnumConverter() },
     };
 

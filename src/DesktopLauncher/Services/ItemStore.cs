@@ -80,13 +80,15 @@ public sealed class ItemStore
         }
         else if (!string.IsNullOrWhiteSpace(dto.Path))
         {
-            tree.Insert(LauncherItem.CreateItem(dto.Name ?? dto.Path, ToAbsolute(dto.Path)), parent);
+            var item = LauncherItem.CreateItem(dto.Name ?? dto.Path, ToAbsolute(dto.Path));
+            if (dto.Tags is not null) item.SetTags(dto.Tags);
+            tree.Insert(item, parent);
         }
     }
 
     private NodeDto ToDto(LauncherItem node) => node.IsGroup
         ? new NodeDto { Name = node.Name, Expanded = node.IsExpanded, Children = node.Children.Select(ToDto).ToList() }
-        : new NodeDto { Name = node.Name, Path = ToStored(node.Path) };
+        : new NodeDto { Name = node.Name, Path = ToStored(node.Path), Tags = node.Tags.Count > 0 ? node.Tags.ToList() : null };
 
     private string ToStored(string path)
     {
@@ -112,5 +114,7 @@ public sealed class ItemStore
         public bool? Expanded { get; set; }
 
         public List<NodeDto>? Children { get; set; }
+
+        public List<string>? Tags { get; set; }
     }
 }

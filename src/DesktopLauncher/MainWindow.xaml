@@ -93,6 +93,40 @@
             </Style.Triggers>
         </Style>
 
+        <Style x:Key="TagChip" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="ToolTip" Value="クリックでこのタグの項目だけを表示（もう一度で解除）" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="1" CornerRadius="11" Padding="9,2,10,3">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="{Binding Brush}" Margin="0,1,6,0" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Name}" FontSize="12" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                <Setter Property="Background" Value="{StaticResource RowSelectedBrush}" />
+                                <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="MetaText" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
             <Setter Property="FontSize" Value="12" />
@@ -183,6 +217,19 @@
                             </StackPanel>
                         </Button>
                     </StackPanel>
+                    <ItemsControl x:Name="TagBar" Margin="0,8,0,-6" Visibility="Collapsed" Focusable="False">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource TagChip}" Click="TagChip_Click"
+                                        AutomationProperties.Name="{Binding Name, StringFormat=タグ {0}}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </Border>
 
