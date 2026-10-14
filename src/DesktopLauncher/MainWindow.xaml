@@ -7,22 +7,32 @@
         WindowStartupLocation="Manual"
         ShowInTaskbar="False"
         Topmost="True"
-        Background="#F5F6F8"
         AllowDrop="True"
         DragOver="Window_DragOver"
         Drop="Window_Drop"
         Deactivated="Window_Deactivated">
+    <Window.Style>
+        <Style TargetType="Window" BasedOn="{StaticResource ThemedWindow}" />
+    </Window.Style>
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
     <Window.Resources>
-        <Style x:Key="ToolButton" TargetType="ButtonBase">
-            <Setter Property="Padding" Value="10,4" />
-            <Setter Property="Margin" Value="0,0,6,0" />
+        <Style x:Key="TitleButton" TargetType="ButtonBase" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="Width" Value="34" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="2,0,0,0" />
+            <Setter Property="WindowChrome.IsHitTestVisibleInChrome" Value="True" />
         </Style>
 
         <Style x:Key="RowStyle" TargetType="Border">
-            <Setter Property="Padding" Value="4,3" />
+            <Setter Property="Padding" Value="4,6,10,6" />
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="#2F80ED" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="CornerRadius" Value="6" />
             <Setter Property="ToolTip" Value="{Binding Path}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsGroup}" Value="True">
@@ -30,12 +40,15 @@
                 </DataTrigger>
                 <DataTrigger Binding="{Binding DropPosition}" Value="Before">
                     <Setter Property="BorderThickness" Value="0,2,0,0" />
+                    <Setter Property="CornerRadius" Value="0" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding DropPosition}" Value="After">
                     <Setter Property="BorderThickness" Value="0,0,0,2" />
+                    <Setter Property="CornerRadius" Value="0" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding DropPosition}" Value="Into">
-                    <Setter Property="Background" Value="#DCEBFF" />
+                    <Setter Property="Background" Value="{StaticResource DropIntoBrush}" />
+                    <Setter Property="BorderThickness" Value="1" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -51,17 +64,17 @@
             </Style.Triggers>
         </Style>
 
-        <Style x:Key="GroupGlyph" TargetType="TextBlock">
+        <Style x:Key="GroupGlyph" TargetType="TextBlock" BasedOn="{StaticResource Glyph}">
             <Setter Property="Text" Value="&#xE8B7;" />
-            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
-            <Setter Property="FontSize" Value="17" />
-            <Setter Property="Foreground" Value="#2F80ED" />
-            <Setter Property="HorizontalAlignment" Value="Center" />
-            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsGroup}" Value="True">
                     <Setter Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                    <Setter Property="Text" Value="&#xE838;" />
                 </DataTrigger>
             </Style.Triggers>
         </Style>
@@ -75,105 +88,160 @@
                 </DataTrigger>
             </Style.Triggers>
         </Style>
+
+        <Style x:Key="MetaText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
     </Window.Resources>
 
-    <DockPanel>
-        <Border DockPanel.Dock="Top" Background="White" BorderBrush="#E1E4E8" BorderThickness="0,0,0,1" Padding="12,10">
-            <StackPanel>
-                <Grid>
-                    <TextBox x:Name="SearchBox" Padding="6,5" VerticalContentAlignment="Center"
-                             TextChanged="SearchBox_TextChanged" PreviewKeyDown="SearchBox_PreviewKeyDown" />
-                    <TextBlock Text="名前で検索（Enter で先頭を起動、Esc で小さくする）" Foreground="#9AA0A6" Margin="10,0,0,0"
-                               VerticalAlignment="Center" IsHitTestVisible="False">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Visibility" Value="Collapsed" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
-                                        <Setter Property="Visibility" Value="Visible" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </Grid>
-                <DockPanel Margin="0,8,0,0">
-                    <Button DockPanel.Dock="Right" Content="設定" Style="{StaticResource ToolButton}" Margin="6,0,0,0"
-                            Click="Settings_Click" />
-                    <ToggleButton x:Name="PinButton" DockPanel.Dock="Right" Content="固定" Style="{StaticResource ToolButton}" Margin="0"
-                                  ToolTip="オンにすると、他のウィンドウをクリックしても小さくなりません。&#x0a;エクスプローラーからドラッグして追加するときに使います。" />
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="＋ファイル" Style="{StaticResource ToolButton}" Click="AddFile_Click"
-                                ToolTip="選んでいるグループに追加します" />
-                        <Button Content="＋フォルダー" Style="{StaticResource ToolButton}" Click="AddFolder_Click"
-                                ToolTip="選んでいるグループに追加します" />
-                        <Button Content="＋グループ" Style="{StaticResource ToolButton}" Click="AddGroup_Click"
-                                ToolTip="選んでいるグループの中に作ります" />
-                    </StackPanel>
-                </DockPanel>
-            </StackPanel>
-        </Border>
+    <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                        <Setter Property="Margin" Value="7" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+        <DockPanel>
+            <Grid DockPanel.Dock="Top" Height="40" Background="{StaticResource HeaderBrush}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Image Source="Assets/app.ico" Width="16" Height="16" Margin="14,0,10,0" />
+                <TextBlock Grid.Column="1" Text="Desktop Launcher" FontSize="12" VerticalAlignment="Center"
+                           Style="{StaticResource SecondaryText}" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,6,0" VerticalAlignment="Center">
+                    <ToggleButton x:Name="PinButton" Style="{StaticResource TitleButton}" AutomationProperties.Name="固定"
+                                  ToolTip="固定：オンにすると、他のウィンドウをクリックしても小さくなりません。&#x0a;エクスプローラーからドラッグして追加するときに使います。">
+                        <TextBlock Text="&#xE718;" Style="{StaticResource Glyph}" />
+                    </ToggleButton>
+                    <Button Style="{StaticResource TitleButton}" AutomationProperties.Name="設定" ToolTip="設定"
+                            Click="Settings_Click">
+                        <TextBlock Text="&#xE713;" Style="{StaticResource Glyph}" />
+                    </Button>
+                    <Button Style="{StaticResource TitleButton}" AutomationProperties.Name="小さくする" ToolTip="小さくする（Esc）"
+                            Click="Collapse_Click">
+                        <TextBlock Text="&#xE921;" Style="{StaticResource Glyph}" FontSize="12" />
+                    </Button>
+                </StackPanel>
+            </Grid>
 
-        <Grid>
-            <TreeView x:Name="Tree" Background="Transparent" BorderThickness="0" Padding="6"
-                      AllowDrop="True"
-                      PreviewMouseLeftButtonDown="Tree_PreviewMouseLeftButtonDown"
-                      PreviewMouseMove="Tree_PreviewMouseMove"
-                      PreviewMouseLeftButtonUp="Tree_PreviewMouseLeftButtonUp"
-                      KeyDown="Tree_KeyDown"
-                      ContextMenuOpening="List_ContextMenuOpening"
-                      DragOver="Tree_DragOver"
-                      DragLeave="Tree_DragLeave"
-                      Drop="Tree_Drop">
-                <TreeView.ItemContainerStyle>
-                    <Style TargetType="TreeViewItem">
-                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
-                        <Setter Property="Padding" Value="0" />
-                    </Style>
-                </TreeView.ItemContainerStyle>
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                        <Border Tag="row" Style="{StaticResource RowStyle}">
-                            <DockPanel>
-                                <Grid Width="20" Height="20" Margin="0,0,8,0">
-                                    <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" />
-                                    <TextBlock Style="{StaticResource GroupGlyph}" />
-                                </Grid>
-                                <TextBlock DockPanel.Dock="Right" Text="{Binding ChildCountText}" Foreground="#9AA0A6"
-                                           Margin="8,0,0,0" VerticalAlignment="Center" />
+            <Border DockPanel.Dock="Top" Background="{StaticResource HeaderBrush}" BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="0,0,0,1" Padding="12,2,12,8">
+                <StackPanel>
+                    <Grid>
+                        <TextBox x:Name="SearchBox" Padding="32,7,8,7" AutomationProperties.Name="検索"
+                                 TextChanged="SearchBox_TextChanged" PreviewKeyDown="SearchBox_PreviewKeyDown" />
+                        <TextBlock Text="&#xE721;" Style="{StaticResource Glyph}" HorizontalAlignment="Left" Margin="12,0,0,0"
+                                   FontSize="13" Foreground="{StaticResource TextTertiaryBrush}" IsHitTestVisible="False" />
+                        <TextBlock Text="名前で検索（Enter で起動、Esc で小さくする）" Margin="34,0,0,0"
+                                   VerticalAlignment="Center" IsHitTestVisible="False">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}" />
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Margin="-4,6,0,0">
+                        <Button Style="{StaticResource GhostButton}" Click="AddFile_Click" AutomationProperties.Name="＋ファイル"
+                                ToolTip="ファイルを追加します（選んでいるグループの中へ）">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
+                                <TextBlock Text="ファイル" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource GhostButton}" Click="AddFolder_Click" AutomationProperties.Name="＋フォルダー"
+                                ToolTip="フォルダーを追加します（選んでいるグループの中へ）">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
+                                <TextBlock Text="フォルダー" />
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource GhostButton}" Click="AddGroup_Click" AutomationProperties.Name="＋グループ"
+                                ToolTip="グループを作ります（選んでいるグループの中へ）">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
+                                <TextBlock Text="グループ" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Grid>
+                <TreeView x:Name="Tree" Background="Transparent" BorderThickness="0" Padding="8,6"
+                          AllowDrop="True"
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          PreviewMouseLeftButtonDown="Tree_PreviewMouseLeftButtonDown"
+                          PreviewMouseMove="Tree_PreviewMouseMove"
+                          PreviewMouseLeftButtonUp="Tree_PreviewMouseLeftButtonUp"
+                          KeyDown="Tree_KeyDown"
+                          ContextMenuOpening="List_ContextMenuOpening"
+                          DragOver="Tree_DragOver"
+                          DragLeave="Tree_DragLeave"
+                          Drop="Tree_Drop">
+                    <TreeView.ItemContainerStyle>
+                        <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                        </Style>
+                    </TreeView.ItemContainerStyle>
+                    <TreeView.ItemTemplate>
+                        <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                            <Border Tag="row" Style="{StaticResource RowStyle}">
+                                <DockPanel>
+                                    <Grid Width="20" Height="20" Margin="0,0,10,0">
+                                        <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" />
+                                        <TextBlock Style="{StaticResource GroupGlyph}" />
+                                    </Grid>
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding ChildCountText}" Style="{StaticResource MetaText}"
+                                               Margin="8,0,0,0" />
+                                    <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
+                                </DockPanel>
+                            </Border>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+
+                <ListBox x:Name="SearchList" Background="Transparent" BorderThickness="0" Padding="8,6"
+                         Visibility="Collapsed" HorizontalContentAlignment="Stretch"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         KeyDown="SearchList_KeyDown"
+                         ContextMenuOpening="List_ContextMenuOpening">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                            <Setter Property="ToolTip" Value="{Binding Path}" />
+                            <EventSetter Event="MouseLeftButtonUp" Handler="SearchItem_MouseLeftButtonUp" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <DockPanel Margin="0,2">
+                                <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" Margin="0,0,10,0" />
+                                <TextBlock DockPanel.Dock="Right" Text="{Binding Location}" Style="{StaticResource MetaText}"
+                                           Margin="12,0,0,0" />
                                 <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
                             </DockPanel>
-                        </Border>
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
 
-            <ListBox x:Name="SearchList" Background="Transparent" BorderThickness="0" Padding="6"
-                     Visibility="Collapsed" HorizontalContentAlignment="Stretch"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                     KeyDown="SearchList_KeyDown"
-                     ContextMenuOpening="List_ContextMenuOpening">
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="ToolTip" Value="{Binding Path}" />
-                        <EventSetter Event="MouseLeftButtonUp" Handler="SearchItem_MouseLeftButtonUp" />
-                    </Style>
-                </ListBox.ItemContainerStyle>
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <DockPanel Margin="2,3">
-                            <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" Margin="0,0,8,0" />
-                            <TextBlock DockPanel.Dock="Right" Text="{Binding Location}" Foreground="#9AA0A6"
-                                       Margin="12,0,0,0" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
-                        </DockPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-
-            <TextBlock x:Name="EmptyText" HorizontalAlignment="Center" VerticalAlignment="Center"
-                       TextAlignment="Center" Foreground="#80868B" FontSize="14" IsHitTestVisible="False" />
-        </Grid>
-    </DockPanel>
+                <TextBlock x:Name="EmptyText" HorizontalAlignment="Center" VerticalAlignment="Center" LineHeight="22"
+                           TextAlignment="Center" Style="{StaticResource SecondaryText}" IsHitTestVisible="False" />
+            </Grid>
+        </DockPanel>
+    </Border>
 </Window>

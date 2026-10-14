@@ -32,6 +32,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         _settingsStore = settingsStore;
         _settings = settings;
+        DarkFrame.Apply(this);
 
         Tree.ItemsSource = _tree.Roots;
         _tree.Roots.CollectionChanged += (_, _) => UpdateEmptyText();
@@ -747,6 +748,8 @@ public partial class MainWindow : Window
 
         foreach (var path in captured.Where(File.Exists)) ShortcutFiles.MoveToRecycleBin(path);
     }
+
+    private void Collapse_Click(object sender, RoutedEventArgs e) => HideLauncher();
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {

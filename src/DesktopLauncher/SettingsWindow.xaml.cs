@@ -11,6 +11,7 @@ public partial class SettingsWindow : Window
     public SettingsWindow(SettingsStore store, AppSettings settings)
     {
         InitializeComponent();
+        DarkFrame.Apply(this);
         _store = store;
         _settings = settings;
         MoveShortcutsBox.IsChecked = settings.MoveShortcutsToLauncher;

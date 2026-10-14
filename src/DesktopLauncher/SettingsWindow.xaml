@@ -2,23 +2,26 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="設定"
-        Width="440" SizeToContent="Height"
+        Width="460" SizeToContent="Height"
         ResizeMode="NoResize" ShowInTaskbar="False"
-        WindowStartupLocation="CenterOwner">
-    <StackPanel Margin="18">
+        WindowStartupLocation="CenterOwner"
+        Style="{StaticResource ThemedWindow}">
+    <StackPanel Margin="20,18,20,20">
         <CheckBox x:Name="MoveShortcutsBox">
             <TextBlock Text="ショートカット（.lnk / .url）を登録したら、元のファイルをごみ箱に移す" TextWrapping="Wrap" />
         </CheckBox>
-        <TextBlock Margin="22,4,0,0" Foreground="#80868B" TextWrapping="Wrap"
+        <TextBlock Margin="26,6,0,0" TextWrapping="Wrap" FontSize="12" LineHeight="19" Style="{StaticResource SecondaryText}"
                    Text="ランチャーには、ショートカットのコピーをアプリのフォルダー（data\links）に保存します。デスクトップなどのショートカットを片付けたいときに使います。" />
 
-        <CheckBox x:Name="StartupBox" Margin="0,16,0,0" Content="Windows 起動時に開始" />
-        <TextBlock Margin="22,4,0,0" Foreground="#80868B" TextWrapping="Wrap"
+        <Border Height="1" Margin="0,16" Background="{StaticResource LineBrush}" />
+
+        <CheckBox x:Name="StartupBox" Content="Windows 起動時に開始" />
+        <TextBlock Margin="26,6,0,0" TextWrapping="Wrap" FontSize="12" LineHeight="19" Style="{StaticResource SecondaryText}"
                    Text="オンにすると、Windows のスタートアップ（レジストリの HKCU\…\Run）に登録します。" />
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-            <Button Content="OK" Width="80" IsDefault="True" Click="Ok_Click" />
-            <Button Content="キャンセル" Width="80" Margin="8,0,0,0" IsCancel="True" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,24,0,0">
+            <Button Content="OK" MinWidth="88" IsDefault="True" Click="Ok_Click" />
+            <Button Content="キャンセル" MinWidth="88" Margin="8,0,0,0" IsCancel="True" />
         </StackPanel>
     </StackPanel>
 </Window>
