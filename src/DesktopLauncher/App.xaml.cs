@@ -28,7 +28,10 @@ public partial class App : Application
             return;
         }
 
-        _window = new DesktopLauncher.MainWindow();
+        var settingsStore = new SettingsStore();
+        var settings = settingsStore.Load();
+
+        _window = new DesktopLauncher.MainWindow(settingsStore, settings);
         MainWindow = _window;
         _window.ClosedToTray += OnClosedToTray;
 
@@ -38,7 +41,7 @@ public partial class App : Application
         _tray = new TrayIcon(_hotKey.DisplayText, _window.ShowLauncher, ExitApp);
         _instance.ShowRequested += () => Dispatcher.BeginInvoke(_window.ShowLauncher);
 
-        _mini = new MiniWindow(new SettingsStore(), _hotKey.DisplayText);
+        _mini = new MiniWindow(settingsStore, settings, _hotKey.DisplayText);
         _mini.OpenRequested += _window.ShowLauncher;
         _mini.ExitRequested += ExitApp;
         _window.Anchor = () => _mini.Bounds;

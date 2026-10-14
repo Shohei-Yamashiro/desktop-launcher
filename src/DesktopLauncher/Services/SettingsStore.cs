@@ -8,6 +8,9 @@ public sealed class AppSettings
     public double? MiniLeft { get; set; }
 
     public double? MiniTop { get; set; }
+
+    /// <summary>Copy registered .lnk/.url files into the app folder and move the originals to the Recycle Bin.</summary>
+    public bool MoveShortcutsToLauncher { get; set; } = true;
 }
 
 /// <summary>

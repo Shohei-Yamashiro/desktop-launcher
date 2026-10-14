@@ -16,11 +16,11 @@ public partial class MiniWindow : Window
     private readonly SettingsStore _settingsStore;
     private readonly AppSettings _settings;
 
-    public MiniWindow(SettingsStore settingsStore, string hotKeyText)
+    public MiniWindow(SettingsStore settingsStore, AppSettings settings, string hotKeyText)
     {
         InitializeComponent();
         _settingsStore = settingsStore;
-        _settings = settingsStore.Load();
+        _settings = settings;
         IconImage.Source = LoadLargestIconFrame();
         ToolTip = $"Desktop Launcher（{hotKeyText}）\nクリックで開く・ドラッグで移動";
         PlaceInitially();

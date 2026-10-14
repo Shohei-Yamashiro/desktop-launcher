@@ -21,13 +21,25 @@ public sealed class ItemStore
 
     public ItemStore(string? dataDirectory = null)
     {
-        DataDirectory = dataDirectory ?? Path.Combine(AppContext.BaseDirectory, "data");
+        DataDirectory = Path.GetFullPath(dataDirectory ?? Path.Combine(AppContext.BaseDirectory, "data"));
+        AppDirectory = Path.GetDirectoryName(DataDirectory) ?? DataDirectory;
         FilePath = Path.Combine(DataDirectory, "items.json");
+        LinksDirectory = Path.Combine(DataDirectory, "links");
     }
 
     public string DataDirectory { get; }
 
+    /// <summary>Paths under this folder are saved relative to it, so the app folder can be moved.</summary>
+    public string AppDirectory { get; }
+
+    /// <summary>Where registered shortcuts are copied to.</summary>
+    public string LinksDirectory { get; }
+
     public string FilePath { get; }
+
+    public bool IsInLinksDirectory(string path) =>
+        Path.IsPathRooted(path)
+        && Path.GetFullPath(path).StartsWith(LinksDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
 
     public void Load(LauncherTree tree)
     {
@@ -57,7 +69,7 @@ public sealed class ItemStore
         File.Move(tempPath, FilePath, overwrite: true);
     }
 
-    private static void Add(LauncherTree tree, NodeDto dto, LauncherItem? parent)
+    private void Add(LauncherTree tree, NodeDto dto, LauncherItem? parent)
     {
         if (dto.Children is not null)
         {
@@ -68,13 +80,28 @@ public sealed class ItemStore
         }
         else if (!string.IsNullOrWhiteSpace(dto.Path))
         {
-            tree.Insert(LauncherItem.CreateItem(dto.Name ?? dto.Path, dto.Path), parent);
+            tree.Insert(LauncherItem.CreateItem(dto.Name ?? dto.Path, ToAbsolute(dto.Path)), parent);
         }
     }
 
-    private static NodeDto ToDto(LauncherItem node) => node.IsGroup
+    private NodeDto ToDto(LauncherItem node) => node.IsGroup
         ? new NodeDto { Name = node.Name, Expanded = node.IsExpanded, Children = node.Children.Select(ToDto).ToList() }
-        : new NodeDto { Name = node.Name, Path = node.Path };
+        : new NodeDto { Name = node.Name, Path = ToStored(node.Path) };
+
+    private string ToStored(string path)
+    {
+        if (!Path.IsPathRooted(path)) return path;
+        var full = Path.GetFullPath(path);
+        return full.StartsWith(AppDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            ? Path.GetRelativePath(AppDirectory, full)
+            : path;
+    }
+
+    private string ToAbsolute(string stored)
+    {
+        if (Path.IsPathRooted(stored) || Uri.TryCreate(stored, UriKind.Absolute, out _)) return stored;
+        return Path.GetFullPath(Path.Combine(AppDirectory, stored));
+    }
 
     private sealed class NodeDto
     {
