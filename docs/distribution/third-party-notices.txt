@@ -1,0 +1,17 @@
+Desktop Launcher 外部部品のライセンス表記
+==========================================
+
+本ソフトウェアには、次の外部部品が含まれています。
+各部品の著作権その他の権利は、それぞれの権利者に帰属します。
+各部品には、それぞれのライセンスが適用されます。本ソフトウェアの利用条件（LICENSE.txt）は、
+これらのライセンスに優先するものではありません。
+ライセンスの本文は、英語の原文のまま掲載しています。
+
+■ MIT License
+  .NET Runtime                        Copyright (c) .NET Foundation and Contributors
+  .NET Windows Desktop Runtime
+  （WPF・Windows Forms）               Copyright (c) .NET Foundation and Contributors
+
+■ 外部部品に含まれる第三者の部品
+  .NET Runtime、WPF および Windows Forms に含まれる第三者の部品のライセンス表記を、
+  末尾の付録に原文のまま掲載しています。
