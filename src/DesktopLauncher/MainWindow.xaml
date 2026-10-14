@@ -131,17 +131,20 @@
         <controls:TagBrushConverter x:Key="TagBrush" />
 
         <!-- Name followed by the node's tags; tags that do not fit end in "…".
-             Inherited tags (from enclosing groups) get a dashed outline, a hollow dot and dimmer text. -->
+             Own tags are tinted with the tag color; inherited tags (from enclosing groups) only get
+             a gray dashed outline, a hollow dot and dimmer text. -->
         <DataTemplate x:Key="RowTag">
             <Grid>
-                <Border x:Name="Solid" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="1" CornerRadius="8" />
-                <Rectangle x:Name="Dashed" Stroke="{StaticResource LineStrongBrush}" StrokeThickness="1" StrokeDashArray="2 2"
+                <Border x:Name="Solid" BorderThickness="1" CornerRadius="8"
+                        Background="{Binding Name, Converter={StaticResource TagBrush}, ConverterParameter=0.2}"
+                        BorderBrush="{Binding Name, Converter={StaticResource TagBrush}, ConverterParameter=0.75}" />
+                <Rectangle x:Name="Dashed" Stroke="{StaticResource TextTertiaryBrush}" StrokeThickness="1" StrokeDashArray="2 2"
                            RadiusX="8" RadiusY="8" Visibility="Collapsed" SnapsToDevicePixels="True" />
                 <StackPanel Orientation="Horizontal" Margin="7,1,8,2">
                     <Ellipse x:Name="Dot" Width="6" Height="6" Fill="{Binding Name, Converter={StaticResource TagBrush}}"
                              Stroke="{Binding Name, Converter={StaticResource TagBrush}}" StrokeThickness="1.2"
                              Margin="0,1,5,0" VerticalAlignment="Center" />
-                    <TextBlock x:Name="Label" Text="{Binding Name}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+                    <TextBlock x:Name="Label" Text="{Binding Name}" FontSize="11" Foreground="{StaticResource TextBrush}"
                                VerticalAlignment="Center" />
                 </StackPanel>
             </Grid>
