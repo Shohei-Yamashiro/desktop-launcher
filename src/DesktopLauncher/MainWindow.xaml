@@ -130,16 +130,32 @@
 
         <controls:TagBrushConverter x:Key="TagBrush" />
 
-        <!-- Name followed by the node's own tags; tags that do not fit end in "…" -->
+        <!-- Name followed by the node's tags; tags that do not fit end in "…".
+             Own tags are tinted with the tag color; inherited tags (from enclosing groups) only get
+             a gray dashed outline, a hollow dot and slightly dimmer text. -->
         <DataTemplate x:Key="RowTag">
-            <Border BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="1" CornerRadius="8" Padding="6,0,7,1">
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse Width="6" Height="6" Fill="{Binding Converter={StaticResource TagBrush}}" Margin="0,1,5,0"
-                             VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
+            <Grid>
+                <Border x:Name="Solid" BorderThickness="1" CornerRadius="8"
+                        Background="{Binding Name, Converter={StaticResource TagBrush}, ConverterParameter=0.2}"
+                        BorderBrush="{Binding Name, Converter={StaticResource TagBrush}, ConverterParameter=0.75}" />
+                <Rectangle x:Name="Dashed" Stroke="{StaticResource TextSecondaryBrush}" StrokeThickness="1" StrokeDashArray="2 2"
+                           RadiusX="8" RadiusY="8" Visibility="Collapsed" SnapsToDevicePixels="True" />
+                <StackPanel Orientation="Horizontal" Margin="7,1,8,2">
+                    <Ellipse x:Name="Dot" Width="6" Height="6" Fill="{Binding Name, Converter={StaticResource TagBrush}}"
+                             Stroke="{Binding Name, Converter={StaticResource TagBrush}}" StrokeThickness="1.2"
+                             Margin="0,1,5,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="Label" Text="{Binding Name}" FontSize="11" Foreground="{StaticResource TextBrush}"
                                VerticalAlignment="Center" />
                 </StackPanel>
-            </Border>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsInherited}" Value="True">
+                    <Setter TargetName="Solid" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="Dashed" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="Dot" Property="Fill" Value="Transparent" />
+                    <Setter TargetName="Label" Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
 
         <ItemsPanelTemplate x:Key="RowTagsPanel">
@@ -147,7 +163,7 @@
         </ItemsPanelTemplate>
 
         <Style x:Key="RowTags" TargetType="ItemsControl">
-            <Setter Property="ItemsSource" Value="{Binding Tags}" />
+            <Setter Property="ItemsSource" Value="{Binding DisplayTags}" />
             <Setter Property="ItemTemplate" Value="{StaticResource RowTag}" />
             <Setter Property="ItemsPanel" Value="{StaticResource RowTagsPanel}" />
             <Setter Property="Focusable" Value="False" />

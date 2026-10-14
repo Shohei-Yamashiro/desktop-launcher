@@ -13,6 +13,9 @@ public enum DropPosition
     After,
 }
 
+/// <summary>A tag as shown on a row: set on the node itself, or inherited from an enclosing group.</summary>
+public sealed record TagView(string Name, bool IsInherited);
+
 /// <summary>
 /// A launchable entry, or a group (IsGroup) that holds other entries and groups.
 /// </summary>
@@ -25,6 +28,8 @@ public sealed class LauncherItem : INotifyPropertyChanged
     private bool _isCurrent;
     private DropPosition _dropPosition;
     private IReadOnlyList<string> _tags = [];
+    private IReadOnlyList<TagView> _displayTags = [];
+    private LauncherItem? _parent;
 
     private LauncherItem(bool isGroup)
     {
@@ -48,7 +53,16 @@ public sealed class LauncherItem : INotifyPropertyChanged
 
     public ObservableCollection<LauncherItem> Children { get; } = [];
 
-    public LauncherItem? Parent { get; set; }
+    public LauncherItem? Parent
+    {
+        get => _parent;
+        set
+        {
+            if (_parent == value) return;
+            _parent = value;
+            RefreshDisplayTags();
+        }
+    }
 
     public ImageSource? Icon
     {
@@ -86,7 +100,38 @@ public sealed class LauncherItem : INotifyPropertyChanged
     public IReadOnlyList<string> Tags
     {
         get => _tags;
-        private set => SetField(ref _tags, value);
+        private set
+        {
+            SetField(ref _tags, value);
+            RefreshDisplayTags();
+        }
+    }
+
+    /// <summary>The node's own tags followed by those it inherits from enclosing groups.</summary>
+    public IReadOnlyList<TagView> DisplayTags
+    {
+        get => _displayTags;
+        private set => SetField(ref _displayTags, value);
+    }
+
+    /// <summary>Tags of the enclosing groups that the node does not carry itself, nearest group first.</summary>
+    public IReadOnlyList<string> InheritedTags()
+    {
+        var inherited = new List<string>();
+        for (var group = Parent; group is not null; group = group.Parent) inherited.AddRange(group.Tags);
+        return inherited.Where(t => !HasTag(t)).Distinct(StringComparer.CurrentCultureIgnoreCase).ToArray();
+    }
+
+    /// <summary>Own and inherited tags.</summary>
+    public IEnumerable<string> EffectiveTags() => _tags.Concat(InheritedTags());
+
+    private void RefreshDisplayTags()
+    {
+        var next = _tags.Select(t => new TagView(t, false))
+            .Concat(InheritedTags().Select(t => new TagView(t, true)))
+            .ToArray();
+        if (!next.SequenceEqual(_displayTags)) DisplayTags = next;
+        foreach (var child in Children) child.RefreshDisplayTags();
     }
 
     public void SetTags(IEnumerable<string> tags)
