@@ -21,6 +21,7 @@ public sealed class OverflowPanel : Panel
         typeof(OverflowPanel), new FrameworkPropertyMetadata(Brushes.Gray, FrameworkPropertyMetadataOptions.AffectsRender));
 
     private double? _ellipsisX;
+    private double _naturalWidth;
 
     public OverflowPanel()
     {
@@ -48,6 +49,19 @@ public sealed class OverflowPanel : Panel
             if (width > 0) width += Spacing;
             width += child.DesiredSize.Width;
             height = Math.Max(height, child.DesiredSize.Height);
+        }
+
+        // The desired size is capped at the old constraint, so a grown row would not reach the parent
+        // that hands out the width; tell it directly.
+        if (width != _naturalWidth)
+        {
+            _naturalWidth = width;
+            for (var parent = VisualTreeHelper.GetParent(this) as UIElement; parent is not null;
+                 parent = VisualTreeHelper.GetParent(parent) as UIElement)
+            {
+                parent.InvalidateMeasure();
+                if (parent is NameTagsPanel) break;
+            }
         }
         return new Size(Math.Min(width, availableSize.Width), height);
     }

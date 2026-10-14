@@ -30,6 +30,10 @@ public partial class MainWindow : Window
     private LauncherItem? _dropTarget;
     private string? _activeTag;
 
+    private LauncherItem? _anchor;
+    private bool _collapseOnUp;
+    private bool _settingCurrent;
+
     public MainWindow(SettingsStore settingsStore, AppSettings settings)
     {
         InitializeComponent();
@@ -201,12 +205,17 @@ public partial class MainWindow : Window
         if (_activeTag is not null) SetActiveTag(null);
     }
 
-    private void EditTags(LauncherItem item)
+    private void EditTags(IReadOnlyList<LauncherItem> nodes)
     {
-        var dialog = new TagsWindow(item.Name, item.IsGroup, _tree.AllTags(), item.Tags, _tagColors.BrushFor) { Owner = this };
+        var heading = nodes.Count == 1
+            ? (nodes[0].IsGroup ? $"グループ「{nodes[0].Name}」" : $"「{nodes[0].Name}」") + "に付けるタグ"
+            : $"選んだ {nodes.Count} 件に付けるタグ";
+        var note = nodes.Any(n => n.IsGroup) ? "グループのタグで絞り込むと、中の項目もすべて表示されます。" : null;
+
+        var dialog = new TagsWindow(heading, note, _tree.AllTags(), nodes.Select(n => n.Tags).ToList(), _tagColors.BrushFor) { Owner = this };
         if (WithModal(dialog.ShowDialog) != true) return;
 
-        item.SetTags(dialog.SelectedTags);
+        foreach (var node in nodes) node.ApplyTagChanges(dialog.AddedTags, dialog.RemovedTags);
         UpdateTagBar();
         if (IsSearching) UpdateSearch();
         Save();
@@ -218,6 +227,8 @@ public partial class MainWindow : Window
 
     private void UpdateSearch()
     {
+        // Hidden rows must not stay selected, or commands would act on them.
+        SelectOnly(null);
         if (!IsSearching)
         {
             SearchList.ItemsSource = null;
@@ -262,7 +273,7 @@ public partial class MainWindow : Window
                 {
                     if (SearchList.SelectedItem is LauncherItem hit) Launch(hit);
                 }
-                else if (Tree.SelectedItem is LauncherItem { IsGroup: false } selected)
+                else if (SelectedNodes() is [{ IsGroup: false } selected])
                 {
                     Launch(selected);
                 }
@@ -286,8 +297,9 @@ public partial class MainWindow : Window
     private void FocusTree()
     {
         if (_tree.Roots.Count == 0) return;
-        var node = Tree.SelectedItem as LauncherItem ?? _tree.Roots[0];
-        node.IsSelected = true;
+        var node = Tree.SelectedItem as LauncherItem ?? SelectedNodes().FirstOrDefault() ?? _tree.Roots[0];
+        SelectOnly(node);
+        SetCurrent(node);
         (Tree.ItemContainerGenerator.ContainerFromItem(node) as TreeViewItem)?.Focus();
     }
 
@@ -296,51 +308,155 @@ public partial class MainWindow : Window
         if (SearchList.SelectedItem is LauncherItem node) HandleNodeKey(node, e);
     }
 
-    private void SearchItem_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    /// <summary>Covers rows that are not realized, which the IsSelected binding cannot reach.</summary>
+    private void SearchList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        foreach (var node in e.RemovedItems.OfType<LauncherItem>()) node.IsSelected = false;
+        foreach (var node in e.AddedItems.OfType<LauncherItem>()) node.IsSelected = true;
+    }
+
+    private void SearchItem_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left || Keyboard.Modifiers != ModifierKeys.None) return;
         if (sender is ListBoxItem { DataContext: LauncherItem node }) Launch(node);
+    }
+
+    // ---- Selection ----
+
+    /// <summary>Selected nodes in tree order.</summary>
+    private List<LauncherItem> SelectedNodes() => _tree.All().Where(n => n.IsSelected).ToList();
+
+    private void SelectOnly(LauncherItem? node)
+    {
+        foreach (var n in _tree.All()) n.IsSelected = n == node;
+        if (node is not null) _anchor = node;
+    }
+
+    /// <summary>Selects the visible rows between the anchor and the node.</summary>
+    private void SelectRange(LauncherItem node, bool keepOthers)
+    {
+        var visible = _tree.Visible().ToList();
+        var to = visible.IndexOf(node);
+        var from = _anchor is null ? -1 : visible.IndexOf(_anchor);
+        if (from < 0) from = to;
+        var (low, high) = from <= to ? (from, to) : (to, from);
+
+        if (!keepOthers) foreach (var n in _tree.All()) n.IsSelected = false;
+        for (var i = low; i <= high; i++) visible[i].IsSelected = true;
+    }
+
+    /// <summary>Moves the TreeView's cursor without letting it reset the multi-selection.</summary>
+    private void SetCurrent(LauncherItem node)
+    {
+        _settingCurrent = true;
+        try
+        {
+            // A node that was moved keeps IsCurrent from its old container; toggle so the new one selects.
+            foreach (var n in _tree.All()) n.IsCurrent = false;
+            node.IsCurrent = true;
+        }
+        finally
+        {
+            _settingCurrent = false;
+        }
+    }
+
+    /// <summary>Arrow keys move the TreeView's own selection; follow it, extending with Shift.</summary>
+    private void Tree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (_settingCurrent || Mouse.LeftButton == MouseButtonState.Pressed || Mouse.RightButton == MouseButtonState.Pressed) return;
+        if (e.NewValue is not LauncherItem node) return;
+
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift)) SelectRange(node, keepOthers: false);
+        else SelectOnly(node);
     }
 
     // ---- Tree: click, keys ----
 
     private void Tree_KeyDown(object sender, KeyEventArgs e)
     {
-        if (Tree.SelectedItem is LauncherItem node) HandleNodeKey(node, e);
+        if (e.Key == Key.A && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            foreach (var node in _tree.Visible()) node.IsSelected = true;
+            e.Handled = true;
+            return;
+        }
+        if ((Tree.SelectedItem as LauncherItem ?? SelectedNodes().FirstOrDefault()) is { } current) HandleNodeKey(current, e);
     }
 
     private void HandleNodeKey(LauncherItem node, KeyEventArgs e)
     {
+        var selection = SelectedNodes();
+        if (selection.Count == 0) selection = [node];
+        var single = selection.Count == 1 ? selection[0] : null;
+
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         if (Keyboard.Modifiers == ModifierKeys.Alt && key is Key.Up or Key.Down)
         {
-            var moved = key == Key.Up ? _tree.MoveUp(node) : _tree.MoveDown(node);
-            if (moved) Reselect(node);
+            if (single is not null && (key == Key.Up ? _tree.MoveUp(single) : _tree.MoveDown(single))) Reselect(single);
             e.Handled = true;
             return;
         }
 
         switch (key)
         {
-            case Key.Enter:
-                if (node.IsGroup) node.IsExpanded = !node.IsExpanded;
-                else Launch(node);
+            case Key.Enter when single is not null:
+                if (single.IsGroup) single.IsExpanded = !single.IsExpanded;
+                else Launch(single);
                 e.Handled = true;
                 break;
             case Key.Delete:
-                Remove(node);
+                Remove(selection);
                 e.Handled = true;
                 break;
-            case Key.F2:
-                Rename(node);
+            case Key.F2 when single is not null:
+                Rename(single);
                 e.Handled = true;
                 break;
         }
     }
 
+    /// <summary>
+    /// Click selects, Ctrl+click toggles, Shift+click selects a range, double-click launches an item
+    /// (a group opens or closes by the TreeView's own double-click handling).
+    /// </summary>
     private void Tree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _pressPoint = e.GetPosition(Tree);
         _pressedNode = RowFrom(e.OriginalSource)?.Node;
+        _collapseOnUp = false;
+        if (_pressedNode is not { } node) return;
+
+        var modifiers = Keyboard.Modifiers;
+        if (e.ClickCount == 2)
+        {
+            if (!node.IsGroup && modifiers == ModifierKeys.None)
+            {
+                _pressedNode = null;
+                e.Handled = true;
+                Launch(node);
+            }
+            return;
+        }
+
+        if (modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            SelectRange(node, keepOthers: modifiers.HasFlag(ModifierKeys.Control));
+        }
+        else if (modifiers.HasFlag(ModifierKeys.Control))
+        {
+            node.IsSelected = !node.IsSelected;
+            _anchor = node;
+        }
+        else if (node.IsSelected && SelectedNodes().Count > 1)
+        {
+            // Keep the selection so that it can be dragged; a plain click narrows it on release.
+            _collapseOnUp = true;
+        }
+        else
+        {
+            SelectOnly(node);
+        }
     }
 
     private void Tree_PreviewMouseMove(object sender, MouseEventArgs e)
@@ -353,10 +469,13 @@ public partial class MainWindow : Window
 
         var node = _pressedNode;
         _pressedNode = null;
+        _collapseOnUp = false;
+        var nodes = node.IsSelected ? _tree.TopMost(SelectedNodes()) : [node];
+
         _dragging = true;
         try
         {
-            DragDrop.DoDragDrop(Tree, new DataObject(NodeFormat, node), DragDropEffects.Move);
+            DragDrop.DoDragDrop(Tree, new DataObject(NodeFormat, nodes.ToArray()), DragDropEffects.Move);
         }
         finally
         {
@@ -369,10 +488,8 @@ public partial class MainWindow : Window
     {
         var pressed = _pressedNode;
         _pressedNode = null;
-        if (pressed is null || RowFrom(e.OriginalSource)?.Node != pressed) return;
-
-        if (pressed.IsGroup) pressed.IsExpanded = !pressed.IsExpanded;
-        else Launch(pressed);
+        if (_collapseOnUp && pressed is not null && RowFrom(e.OriginalSource)?.Node == pressed) SelectOnly(pressed);
+        _collapseOnUp = false;
     }
 
     // ---- Tree: drag & drop ----
@@ -382,10 +499,10 @@ public partial class MainWindow : Window
         var (target, position) = DropSpot(e);
         var allowed = false;
 
-        if (e.Data.GetData(NodeFormat) is LauncherItem dragged)
+        if (e.Data.GetData(NodeFormat) is LauncherItem[] dragged)
         {
             var newParent = position == DropPosition.Into ? target : target?.Parent;
-            allowed = target != dragged && LauncherTree.CanMove(dragged, newParent);
+            allowed = (target is null || !dragged.Contains(target)) && dragged.All(n => LauncherTree.CanMove(n, newParent));
             e.Effects = allowed ? DragDropEffects.Move : DragDropEffects.None;
         }
         else if (e.Data.GetDataPresent(DataFormats.FileDrop) || TryGetDroppedUrl(e.Data) is not null)
@@ -412,15 +529,10 @@ public partial class MainWindow : Window
 
         var (parent, index) = InsertionPoint(target, position);
 
-        if (e.Data.GetData(NodeFormat) is LauncherItem dragged)
+        if (e.Data.GetData(NodeFormat) is LauncherItem[] dragged)
         {
-            if (target == dragged) return;
-            if (index >= 0 && _tree.SiblingsOf(dragged) == (parent?.Children ?? _tree.Roots)
-                && _tree.SiblingsOf(dragged).IndexOf(dragged) < index)
-            {
-                index--;
-            }
-            if (!_tree.Move(dragged, parent, index)) return;
+            if (target is not null && dragged.Contains(target)) return;
+            if (!_tree.MoveMany(dragged, parent, index)) return;
             Reselect(dragged);
         }
         else if (e.Data.GetData(DataFormats.FileDrop) is string[] paths)
@@ -526,9 +638,10 @@ public partial class MainWindow : Window
     {
         e.Handled = true;
         var node = NodeFrom(e.OriginalSource);
-        if (node is not null && sender == Tree) node.IsSelected = true;
+        if (node is not null && !node.IsSelected) SelectOnly(node);
 
-        var menu = BuildMenu(node);
+        var selection = node is null ? [] : _tree.TopMost(SelectedNodes());
+        var menu = selection.Count > 1 ? BuildMultiMenu(selection) : BuildMenu(node);
         menu.PlacementTarget = (UIElement)sender;
         menu.IsOpen = true;
     }
@@ -546,37 +659,49 @@ public partial class MainWindow : Window
         {
             menu.Items.Add(MenuItem(node.IsExpanded ? "閉じる" : "開く", () => node.IsExpanded = !node.IsExpanded, bold: true));
             menu.Items.Add(MenuItem("この中に新しいグループ", () => AddGroup(node)));
-            menu.Items.Add(MenuItem("タグを編集…", () => EditTags(node)));
+            menu.Items.Add(MenuItem("タグを編集…", () => EditTags([node])));
         }
         else
         {
             menu.Items.Add(MenuItem("開く", () => Launch(node), bold: true));
             menu.Items.Add(MenuItem("ファイルの場所を開く", () => OpenLocation(node)));
-            menu.Items.Add(MenuItem("タグを編集…", () => EditTags(node)));
+            menu.Items.Add(MenuItem("タグを編集…", () => EditTags([node])));
         }
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("名前を変更", () => Rename(node), gesture: "F2"));
-        menu.Items.Add(BuildMoveMenu(node));
+        menu.Items.Add(BuildMoveMenu([node]));
 
         var siblings = _tree.SiblingsOf(node);
         var index = siblings.IndexOf(node);
         menu.Items.Add(MenuItem("上へ", () => { if (_tree.MoveUp(node)) Reselect(node); }, gesture: "Alt+↑", enabled: index > 0));
         menu.Items.Add(MenuItem("下へ", () => { if (_tree.MoveDown(node)) Reselect(node); }, gesture: "Alt+↓", enabled: index < siblings.Count - 1));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("ランチャーから削除", () => Remove(node), gesture: "Delete"));
+        menu.Items.Add(MenuItem("ランチャーから削除", () => Remove([node]), gesture: "Delete"));
         return menu;
     }
 
-    private MenuItem BuildMoveMenu(LauncherItem node)
+    private ContextMenu BuildMultiMenu(IReadOnlyList<LauncherItem> nodes)
+    {
+        var menu = new ContextMenu();
+        menu.Items.Add(MenuItem($"{nodes.Count} 件を選択中", () => { }, enabled: false));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(MenuItem("タグを編集…", () => EditTags(nodes)));
+        menu.Items.Add(BuildMoveMenu(nodes));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(MenuItem("ランチャーから削除", () => Remove(nodes), gesture: "Delete"));
+        return menu;
+    }
+
+    private MenuItem BuildMoveMenu(IReadOnlyList<LauncherItem> nodes)
     {
         var move = new MenuItem { Header = "移動" };
-        if (node.Parent is not null) move.Items.Add(MenuItem("（いちばん上の階層）", () => MoveInto(node, null)));
+        if (nodes.Any(n => n.Parent is not null)) move.Items.Add(MenuItem("（いちばん上の階層）", () => MoveInto(nodes, null)));
 
         foreach (var group in _tree.Groups())
         {
-            if (group == node.Parent || !LauncherTree.CanMove(node, group)) continue;
+            if (nodes.All(n => n.Parent == group) || !nodes.All(n => LauncherTree.CanMove(n, group))) continue;
             var indent = new string('　', _tree.Depth(group));
-            move.Items.Add(MenuItem(indent + group.Name, () => MoveInto(node, group)));
+            move.Items.Add(MenuItem(indent + group.Name, () => MoveInto(nodes, group)));
         }
 
         move.IsEnabled = move.Items.Count > 0;
@@ -600,7 +725,7 @@ public partial class MainWindow : Window
 
     private LauncherItem? TargetGroupForAdd()
     {
-        var selected = IsSearching ? SearchList.SelectedItem as LauncherItem : Tree.SelectedItem as LauncherItem;
+        var selected = SelectedNodes().FirstOrDefault();
         return selected is null ? null : selected.IsGroup ? selected : selected.Parent;
     }
 
@@ -688,17 +813,31 @@ public partial class MainWindow : Window
         return copy;
     }
 
-    private void MoveInto(LauncherItem node, LauncherItem? group)
+    private void MoveInto(IReadOnlyList<LauncherItem> nodes, LauncherItem? group)
     {
-        if (_tree.Move(node, group)) Reselect(node);
+        if (_tree.MoveMany(nodes, group)) Reselect(nodes);
     }
 
-    /// <summary>Expands the path to the node, selects it, and saves.</summary>
-    private void Reselect(LauncherItem node)
+    private void Reselect(LauncherItem node) => Reselect([node]);
+
+    /// <summary>Expands the paths to the nodes, selects them, and saves.</summary>
+    private void Reselect(IReadOnlyList<LauncherItem> nodes)
     {
-        for (var group = node.Parent; group is not null; group = group.Parent) group.IsExpanded = true;
-        node.IsSelected = true;
         if (IsSearching) UpdateSearch();
+        var visible = IsSearching ? SearchList.Items.OfType<LauncherItem>().ToHashSet() : null;
+
+        foreach (var n in _tree.All()) n.IsSelected = false;
+        foreach (var node in nodes)
+        {
+            if (visible is not null && !visible.Contains(node)) continue;
+            for (var group = node.Parent; group is not null; group = group.Parent) group.IsExpanded = true;
+            node.IsSelected = true;
+        }
+        if (nodes.Count > 0)
+        {
+            _anchor = nodes[0];
+            if (!IsSearching) SetCurrent(nodes[0]);
+        }
         Save();
     }
 
@@ -785,24 +924,36 @@ public partial class MainWindow : Window
         Save();
     }
 
-    private void Remove(LauncherItem node)
+    private void Remove(IReadOnlyList<LauncherItem> selection)
     {
-        if (node.IsGroup && node.Children.Count > 0)
+        var nodes = _tree.TopMost(selection);
+        if (nodes.Count == 0) return;
+
+        var inside = _tree.All().Count(n => nodes.Any(top => IsDescendant(n, top)));
+        string? question = null;
+        if (nodes.Count > 1)
         {
-            var count = _tree.All().Count(n => IsDescendant(n, node));
+            question = $"選んだ {nodes.Count} 件" + (inside > 0 ? $"と、グループの中の {inside} 件" : "") + "をランチャーから削除しますか？";
+        }
+        else if (inside > 0)
+        {
+            question = $"グループ「{nodes[0].Name}」と、中の {inside} 件をランチャーから削除しますか？";
+        }
+        if (question is not null)
+        {
             var answer = WithModal(() => MessageBox.Show(this,
-                $"グループ「{node.Name}」と、中の {count} 件をランチャーから削除しますか？\n"
-                + "（ファイルやフォルダー自体は削除されません。取り込んだショートカットはごみ箱に移ります）",
+                question + "\n（ファイルやフォルダー自体は削除されません。取り込んだショートカットはごみ箱に移ります）",
                 Title, MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel));
             if (answer != MessageBoxResult.OK) return;
         }
 
         var captured = _tree.All()
-            .Where(n => (n == node || IsDescendant(n, node)) && !n.IsGroup && _store.IsInLinksDirectory(n.Path))
+            .Where(n => nodes.Any(top => n == top || IsDescendant(n, top)) && !n.IsGroup && _store.IsInLinksDirectory(n.Path))
             .Select(n => n.Path)
             .ToList();
 
-        _tree.Remove(node);
+        foreach (var node in nodes) _tree.Remove(node);
+        _anchor = null;
         UpdateTagBar();
         if (IsSearching) UpdateSearch();
         Save();

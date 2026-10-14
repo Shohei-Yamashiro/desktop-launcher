@@ -7,7 +7,10 @@
         WindowStartupLocation="CenterOwner"
         Style="{StaticResource ThemedWindow}">
     <StackPanel Margin="20,18,20,20">
-        <TextBlock x:Name="ItemNameText" Margin="0,0,0,10" TextTrimming="CharacterEllipsis" Style="{StaticResource SecondaryText}" />
+        <TextBlock x:Name="ItemNameText" TextTrimming="CharacterEllipsis" Style="{StaticResource SecondaryText}" />
+        <TextBlock x:Name="NoteText" Margin="0,2,0,0" TextWrapping="Wrap" Visibility="Collapsed" Style="{StaticResource SecondaryText}"
+                   Foreground="{StaticResource TextTertiaryBrush}" />
+        <Border Height="10" />
 
         <Border Background="{StaticResource ControlBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
                 CornerRadius="8" Padding="10,6">
@@ -16,7 +19,7 @@
                     <ItemsControl x:Name="TagList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,4">
+                                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" IsThreeState="{Binding IsMixed}" Margin="0,4">
                                     <StackPanel Orientation="Horizontal">
                                         <Ellipse Width="8" Height="8" Fill="{Binding Brush}" Margin="0,0,7,0" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />

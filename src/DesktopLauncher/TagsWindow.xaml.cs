@@ -7,28 +7,46 @@ using DesktopLauncher.Services;
 
 namespace DesktopLauncher;
 
+/// <summary>
+/// Edits the tags of one or more nodes. A tag that only some of the nodes have starts out
+/// indeterminate and is left alone unless the user checks or clears it.
+/// </summary>
 public partial class TagsWindow : Window
 {
     private readonly ObservableCollection<TagOption> _options;
     private readonly Func<string, Brush> _brushFor;
 
-    public TagsWindow(string itemName, bool isGroup, IEnumerable<string> allTags, IReadOnlyList<string> currentTags,
+    public TagsWindow(string heading, string? note, IEnumerable<string> allTags, IReadOnlyList<IReadOnlyList<string>> currentTagSets,
         Func<string, Brush> brushFor)
     {
         InitializeComponent();
         DarkFrame.Apply(this);
         _brushFor = brushFor;
-        ItemNameText.Text = isGroup
-            ? $"グループ「{itemName}」に付けるタグ\nタグで絞り込むと、このグループの中の項目もすべて表示されます。"
-            : $"「{itemName}」に付けるタグ";
-        _options = new(LauncherItem.NormalizeTags(allTags.Concat(currentTags))
-            .Select(t => new TagOption(t, brushFor(t), currentTags.Contains(t, StringComparer.CurrentCultureIgnoreCase))));
+
+        var used = currentTagSets.SelectMany(t => t);
+        _options = new(LauncherItem.NormalizeTags(allTags.Concat(used)).Select(tag =>
+        {
+            var count = currentTagSets.Count(tags => tags.Contains(tag, StringComparer.CurrentCultureIgnoreCase));
+            bool? state = count == 0 ? false : count == currentTagSets.Count ? true : null;
+            return new TagOption(tag, brushFor(tag), state);
+        }));
+
+        var notes = new List<string>();
+        if (note is not null) notes.Add(note);
+        if (_options.Any(o => o.IsMixed)) notes.Add("「－」は一部に付いているタグ。そのままなら変更しません。");
+        ItemNameText.Text = heading;
+        NoteText.Text = string.Join("\n", notes);
+        NoteText.Visibility = notes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         TagList.ItemsSource = _options;
         UpdateNoTagsText();
         Loaded += (_, _) => NewTagBox.Focus();
     }
 
-    public IReadOnlyList<string> SelectedTags { get; private set; } = [];
+    /// <summary>Tags to add to every node.</summary>
+    public IReadOnlyList<string> AddedTags { get; private set; } = [];
+
+    /// <summary>Tags to remove from every node.</summary>
+    public IReadOnlyList<string> RemovedTags { get; private set; } = [];
 
     private void NewTagBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -70,16 +88,20 @@ public partial class TagsWindow : Window
     private void Ok_Click(object sender, RoutedEventArgs e)
     {
         AddPendingTag();
-        SelectedTags = LauncherItem.NormalizeTags(_options.Where(o => o.IsChecked).Select(o => o.Name));
+        AddedTags = _options.Where(o => o.IsChecked == true).Select(o => o.Name).ToList();
+        RemovedTags = _options.Where(o => o.IsChecked == false).Select(o => o.Name).ToList();
         DialogResult = true;
     }
 
-    public sealed class TagOption(string name, Brush brush, bool isChecked)
+    public sealed class TagOption(string name, Brush brush, bool? isChecked)
     {
         public string Name { get; } = name;
 
         public Brush Brush { get; } = brush;
 
-        public bool IsChecked { get; set; } = isChecked;
+        /// <summary>Only some of the nodes have the tag, so "unchanged" is a valid choice.</summary>
+        public bool IsMixed { get; } = isChecked is null;
+
+        public bool? IsChecked { get; set; } = isChecked;
     }
 }

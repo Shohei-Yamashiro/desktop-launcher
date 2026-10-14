@@ -78,7 +78,54 @@ public sealed class LauncherTree
         return true;
     }
 
+    /// <summary>
+    /// Moves several nodes so that they end up next to each other, in the given order, starting at
+    /// <paramref name="index"/> of the target list (-1 = end). Nothing moves if any of them cannot.
+    /// </summary>
+    public bool MoveMany(IReadOnlyList<LauncherItem> nodes, LauncherItem? newParent, int index = -1)
+    {
+        if (nodes.Count == 0 || !nodes.All(n => CanMove(n, newParent))) return false;
+
+        var target = newParent?.Children ?? Roots;
+        foreach (var node in nodes)
+        {
+            if (index >= 0 && SiblingsOf(node) == target && target.IndexOf(node) < index) index--;
+            Move(node, newParent, index);
+            if (index >= 0) index++;
+        }
+        return true;
+    }
+
+    /// <summary>Drops nodes that sit inside another of the given groups, keeping tree order.</summary>
+    public IReadOnlyList<LauncherItem> TopMost(IEnumerable<LauncherItem> nodes)
+    {
+        var set = nodes.ToHashSet();
+        return All().Where(n => set.Contains(n) && !HasAncestorIn(n, set)).ToList();
+    }
+
+    /// <summary>Nodes shown in the tree (inside expanded groups only), top to bottom.</summary>
+    public IEnumerable<LauncherItem> Visible() => FlattenExpanded(Roots);
+
     public IEnumerable<LauncherItem> All() => Flatten(Roots);
+
+    private static bool HasAncestorIn(LauncherItem node, HashSet<LauncherItem> set)
+    {
+        for (var group = node.Parent; group is not null; group = group.Parent)
+        {
+            if (set.Contains(group)) return true;
+        }
+        return false;
+    }
+
+    private static IEnumerable<LauncherItem> FlattenExpanded(IEnumerable<LauncherItem> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            yield return node;
+            if (!node.IsExpanded) continue;
+            foreach (var child in FlattenExpanded(node.Children)) yield return child;
+        }
+    }
 
     public IEnumerable<LauncherItem> Groups() => All().Where(n => n.IsGroup);
 

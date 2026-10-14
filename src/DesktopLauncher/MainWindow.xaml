@@ -265,6 +265,7 @@
                 <TreeView x:Name="Tree" Background="Transparent" BorderThickness="0" Padding="8,6"
                           AllowDrop="True"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          SelectedItemChanged="Tree_SelectedItemChanged"
                           PreviewMouseLeftButtonDown="Tree_PreviewMouseLeftButtonDown"
                           PreviewMouseMove="Tree_PreviewMouseMove"
                           PreviewMouseLeftButtonUp="Tree_PreviewMouseLeftButtonUp"
@@ -276,7 +277,7 @@
                     <TreeView.ItemContainerStyle>
                         <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                            <Setter Property="IsSelected" Value="{Binding IsCurrent, Mode=TwoWay}" />
                         </Style>
                     </TreeView.ItemContainerStyle>
                     <TreeView.ItemTemplate>
@@ -300,15 +301,17 @@
                 </TreeView>
 
                 <ListBox x:Name="SearchList" Background="Transparent" BorderThickness="0" Padding="8,6"
-                         Visibility="Collapsed" HorizontalContentAlignment="Stretch"
+                         Visibility="Collapsed" HorizontalContentAlignment="Stretch" SelectionMode="Extended"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                          KeyDown="SearchList_KeyDown"
+                         SelectionChanged="SearchList_SelectionChanged"
                          ContextMenuOpening="List_ContextMenuOpening">
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem" BasedOn="{StaticResource {x:Type ListBoxItem}}">
                             <Setter Property="ToolTip" Value="{Binding Path}" />
                             <Setter Property="Padding" Value="{DynamicResource SearchRowPadding}" />
-                            <EventSetter Event="MouseLeftButtonUp" Handler="SearchItem_MouseLeftButtonUp" />
+                            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                            <EventSetter Event="MouseDoubleClick" Handler="SearchItem_MouseDoubleClick" />
                         </Style>
                     </ListBox.ItemContainerStyle>
                     <ListBox.ItemTemplate>
