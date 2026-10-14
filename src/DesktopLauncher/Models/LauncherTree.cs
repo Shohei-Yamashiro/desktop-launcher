@@ -133,12 +133,14 @@ public sealed class LauncherTree
     public IReadOnlyList<string> AllTags() => LauncherItem.NormalizeTags(All().SelectMany(n => n.Tags));
 
     /// <summary>
-    /// Items (not groups) whose name contains the query and that carry the tag themselves or through
-    /// an enclosing group; either condition may be empty.
+    /// Items (not groups) that match the search text (see <see cref="SearchQuery"/>) and carry the tag
+    /// themselves or through an enclosing group; either condition may be empty.
     /// </summary>
-    public IEnumerable<LauncherItem> FindItems(string query, string? tag) => All().Where(n =>
+    public IEnumerable<LauncherItem> FindItems(string text, string? tag) => FindItems(SearchQuery.Parse(text, AllTags()), tag);
+
+    public IEnumerable<LauncherItem> FindItems(SearchQuery query, string? tag) => All().Where(n =>
         !n.IsGroup
-        && (query.Length == 0 || n.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase))
+        && query.Matches(n)
         && (tag is null || n.HasTagIncludingGroups(tag)));
 
     public int Depth(LauncherItem node)

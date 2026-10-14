@@ -80,6 +80,7 @@ public partial class MainWindow : Window
 
     public void HideLauncher()
     {
+        TagSuggest.IsOpen = false;
         ClearFilter();
         SetDropTarget(null, DropPosition.None);
         Save();
@@ -120,7 +121,8 @@ public partial class MainWindow : Window
         }
         if (e.Key == Key.Escape)
         {
-            if (SearchBox.Text.Length > 0) SearchBox.Clear();
+            if (TagSuggest.IsOpen) TagSuggest.IsOpen = false;
+            else if (SearchBox.Text.Length > 0) SearchBox.Clear();
             else if (_activeTag is not null) SetActiveTag(null);
             else HideLauncher();
             e.Handled = true;
@@ -223,7 +225,122 @@ public partial class MainWindow : Window
 
     // ---- Search ----
 
-    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => UpdateSearch();
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        UpdateSearch();
+        UpdateSuggestions();
+    }
+
+    // ---- Search: tag suggestions ----
+
+    public sealed record TagSuggestion(string Name, Brush Brush, int Count)
+    {
+        public string CountText => $"{Count} 件";
+    }
+
+    private const int MaxSuggestions = 8;
+
+    /// <summary>The space-separated word around the caret.</summary>
+    private (int Start, int Length) CurrentWord()
+    {
+        var text = SearchBox.Text;
+        var caret = Math.Min(SearchBox.CaretIndex, text.Length);
+        var start = caret;
+        while (start > 0 && !char.IsWhiteSpace(text[start - 1])) start--;
+        var end = caret;
+        while (end < text.Length && !char.IsWhiteSpace(text[end])) end++;
+        return (start, end - start);
+    }
+
+    /// <summary>
+    /// Lists existing tags that contain the word being typed (those starting with it first).
+    /// After "#" a tag is clearly meant, so the first one is preselected for Tab/Enter;
+    /// for a plain word Enter keeps launching the first result.
+    /// </summary>
+    private void UpdateSuggestions()
+    {
+        var (start, length) = CurrentWord();
+        var word = SearchBox.Text.Substring(start, length);
+        var isTag = SearchQuery.IsTagWord(word);
+        var key = isTag ? word[1..] : word;
+        if (key.Length == 0 && !isTag)
+        {
+            TagSuggest.IsOpen = false;
+            return;
+        }
+
+        var allTags = _tree.AllTags();
+        var used = SearchQuery.Parse(SearchBox.Text, allTags).Tags.ToHashSet(StringComparer.CurrentCultureIgnoreCase);
+        var candidates = allTags
+            .Where(t => t.Contains(key, StringComparison.CurrentCultureIgnoreCase))
+            .Where(t => !used.Contains(t) || string.Equals(t, key, StringComparison.CurrentCultureIgnoreCase))
+            .OrderBy(t => t.StartsWith(key, StringComparison.CurrentCultureIgnoreCase) ? 0 : 1)
+            .Take(MaxSuggestions)
+            .ToList();
+
+        // Nothing left to complete once the word already is the only matching tag.
+        if (candidates.Count == 0
+            || (isTag && candidates is [var only] && string.Equals(only, key, StringComparison.CurrentCultureIgnoreCase)))
+        {
+            TagSuggest.IsOpen = false;
+            return;
+        }
+
+        SuggestList.ItemsSource = candidates
+            .Select(t => new TagSuggestion(t, _tagColors.BrushFor(t), _tree.All().Count(n => !n.IsGroup && n.HasTagIncludingGroups(t))))
+            .ToList();
+        SuggestList.SelectedIndex = isTag ? 0 : -1;
+        TagSuggest.IsOpen = SearchBox.IsKeyboardFocused;
+    }
+
+    /// <summary>Replaces the word being typed with "#tag ".</summary>
+    private void AcceptSuggestion(TagSuggestion suggestion)
+    {
+        var (start, length) = CurrentWord();
+        var text = SearchBox.Text;
+        var insert = SearchQuery.TagPrefix + suggestion.Name + " ";
+        var rest = text[(start + length)..].TrimStart();
+        SearchBox.Text = text[..start] + insert + rest;
+        SearchBox.CaretIndex = start + insert.Length;
+        TagSuggest.IsOpen = false;
+        SearchBox.Focus();
+    }
+
+    /// <summary>Handles the suggestion keys; returns true when the key was used.</summary>
+    private bool HandleSuggestionKey(Key key)
+    {
+        if (!TagSuggest.IsOpen || SuggestList.Items.Count == 0) return false;
+        switch (key)
+        {
+            case Key.Down:
+                SuggestList.SelectedIndex = Math.Min(SuggestList.SelectedIndex + 1, SuggestList.Items.Count - 1);
+                SuggestList.ScrollIntoView(SuggestList.SelectedItem);
+                return true;
+            case Key.Up:
+                SuggestList.SelectedIndex = Math.Max(SuggestList.SelectedIndex - 1, -1);
+                return true;
+            case Key.Tab:
+                AcceptSuggestion((TagSuggestion)(SuggestList.SelectedItem ?? SuggestList.Items[0]));
+                return true;
+            case Key.Enter when SuggestList.SelectedItem is TagSuggestion selected:
+                AcceptSuggestion(selected);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void SuggestList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if ((e.OriginalSource as DependencyObject) is { } source
+            && ItemsControl.ContainerFromElement(SuggestList, source) is ListBoxItem { DataContext: TagSuggestion suggestion })
+        {
+            AcceptSuggestion(suggestion);
+            e.Handled = true;
+        }
+    }
+
+    private void SearchBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e) => TagSuggest.IsOpen = false;
 
     private void UpdateSearch()
     {
@@ -237,9 +354,9 @@ public partial class MainWindow : Window
         }
         else
         {
-            var results = _tree.FindItems(SearchBox.Text.Trim(), _activeTag).ToList();
+            var results = _tree.FindItems(SearchBox.Text, _activeTag).ToList();
             SearchList.ItemsSource = results;
-            SearchList.SelectedIndex = results.Count > 0 ? 0 : -1;
+            SearchList.SelectedIndex = -1;
             SearchList.Visibility = Visibility.Visible;
             Tree.Visibility = Visibility.Collapsed;
         }
@@ -266,19 +383,15 @@ public partial class MainWindow : Window
 
     private void SearchBox_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (HandleSuggestionKey(e.Key))
+        {
+            e.Handled = true;
+            return;
+        }
         switch (e.Key)
         {
+            // Enter moves to the first result; a second Enter there launches it.
             case Key.Enter:
-                if (IsSearching)
-                {
-                    if (SearchList.SelectedItem is LauncherItem hit) Launch(hit);
-                }
-                else if (SelectedNodes() is [{ IsGroup: false } selected])
-                {
-                    Launch(selected);
-                }
-                e.Handled = true;
-                break;
             case Key.Down:
                 if (IsSearching) FocusSearchResult();
                 else FocusTree();
