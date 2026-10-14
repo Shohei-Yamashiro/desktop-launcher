@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private readonly LauncherTree _tree = new();
     private readonly SettingsStore _settingsStore;
     private readonly AppSettings _settings;
+    private readonly TagColors _tagColors;
     private int _modalDepth;
     private bool _exiting;
 
@@ -26,12 +27,14 @@ public partial class MainWindow : Window
     private LauncherItem? _pressedNode;
     private bool _dragging;
     private LauncherItem? _dropTarget;
+    private string? _activeTag;
 
     public MainWindow(SettingsStore settingsStore, AppSettings settings)
     {
         InitializeComponent();
         _settingsStore = settingsStore;
         _settings = settings;
+        _tagColors = new TagColors(settings.TagColors);
         DarkFrame.Apply(this);
         ApplyRowSpacing();
 
@@ -43,7 +46,8 @@ public partial class MainWindow : Window
 
     public event Action? ClosedToTray;
 
-    private bool IsSearching => SearchBox.Text.Trim().Length > 0;
+    /// <summary>The flat result list replaces the tree while text is typed or a tag is chosen.</summary>
+    private bool IsSearching => SearchBox.Text.Trim().Length > 0 || _activeTag is not null;
 
     /// <summary>Screen rectangle the window opens from (the mini icon).</summary>
     public Func<Rect>? Anchor { get; set; }
@@ -70,7 +74,7 @@ public partial class MainWindow : Window
 
     public void HideLauncher()
     {
-        SearchBox.Clear();
+        ClearFilter();
         SetDropTarget(null, DropPosition.None);
         Save();
         Hide();
@@ -111,6 +115,7 @@ public partial class MainWindow : Window
         if (e.Key == Key.Escape)
         {
             if (SearchBox.Text.Length > 0) SearchBox.Clear();
+            else if (_activeTag is not null) SetActiveTag(null);
             else HideLauncher();
             e.Handled = true;
             return;
@@ -149,7 +154,60 @@ public partial class MainWindow : Window
             ShowError(ex.Message);
         }
 
+        UpdateTagBar();
         UpdateEmptyText();
+    }
+
+    // ---- Tags ----
+
+    public sealed record TagChip(string Name, Brush Brush, bool IsActive);
+
+    private void UpdateTagBar()
+    {
+        var tags = _tree.AllTags();
+        if (_activeTag is not null && !tags.Contains(_activeTag, StringComparer.CurrentCultureIgnoreCase)) _activeTag = null;
+
+        _tagColors.KeepOnly(tags);
+        TagBar.ItemsSource = tags
+            .Select(t => new TagChip(t, _tagColors.BrushFor(t), string.Equals(t, _activeTag, StringComparison.CurrentCultureIgnoreCase)))
+            .ToList();
+        TagBar.Visibility = tags.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        if (_tagColors.Changed)
+        {
+            _settings.TagColors = new(_tagColors.Assigned);
+            _settingsStore.Save(_settings);
+            _tagColors.Changed = false;
+        }
+    }
+
+    private void TagChip_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: TagChip chip }) SetActiveTag(chip.IsActive ? null : chip.Name);
+    }
+
+    private void SetActiveTag(string? tag)
+    {
+        _activeTag = tag;
+        UpdateTagBar();
+        UpdateSearch();
+    }
+
+    private void ClearFilter()
+    {
+        SearchBox.Clear();
+        if (_activeTag is not null) SetActiveTag(null);
+    }
+
+    private void EditTags(LauncherItem item)
+    {
+        var dialog = new TagsWindow(item.Name, _tree.AllTags(), item.Tags, _tagColors.BrushFor) { Owner = this };
+        if (WithModal(dialog.ShowDialog) != true) return;
+
+        item.SetTags(dialog.SelectedTags);
+        UpdateTagBar();
+        if (IsSearching) UpdateSearch();
+        Save();
     }
 
     // ---- Search ----
@@ -166,10 +224,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            var query = SearchBox.Text.Trim();
-            var results = _tree.All()
-                .Where(n => !n.IsGroup && n.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase))
-                .ToList();
+            var results = _tree.FindItems(SearchBox.Text.Trim(), _activeTag).ToList();
             SearchList.ItemsSource = results;
             SearchList.SelectedIndex = results.Count > 0 ? 0 : -1;
             SearchList.Visibility = Visibility.Visible;
@@ -494,6 +549,7 @@ public partial class MainWindow : Window
         {
             menu.Items.Add(MenuItem("開く", () => Launch(node), bold: true));
             menu.Items.Add(MenuItem("ファイルの場所を開く", () => OpenLocation(node)));
+            menu.Items.Add(MenuItem("タグを編集…", () => EditTags(node)));
         }
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("名前を変更", () => Rename(node), gesture: "F2"));
@@ -578,7 +634,7 @@ public partial class MainWindow : Window
         var group = LauncherItem.CreateGroup(dialog.NewName);
         group.IsExpanded = true;
         _tree.Insert(group, parent);
-        SearchBox.Clear();
+        ClearFilter();
         Reselect(group);
     }
 
@@ -744,6 +800,7 @@ public partial class MainWindow : Window
             .ToList();
 
         _tree.Remove(node);
+        UpdateTagBar();
         if (IsSearching) UpdateSearch();
         Save();
 
