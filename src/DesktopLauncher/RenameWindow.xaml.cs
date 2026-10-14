@@ -1,4 +1,5 @@
 using System.Windows;
+using DesktopLauncher.Services;
 
 namespace DesktopLauncher;
 
@@ -7,6 +8,7 @@ public partial class RenameWindow : Window
     public RenameWindow(string currentName, string? title = null)
     {
         InitializeComponent();
+        DarkFrame.Apply(this);
         if (title is not null) Title = title;
         NameBox.Text = currentName;
         Loaded += (_, _) =>

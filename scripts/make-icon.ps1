@@ -25,13 +25,21 @@ function New-IconPng([int]$size) {
     $s = $size / 16.0
     $bgRect = New-Object System.Drawing.RectangleF 0, 0, $size, $size
     $bg = New-RoundedRect 0 0 $size $size (3.5 * $s)
-    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $bgRect, ([System.Drawing.Color]::FromArgb(255, 47, 128, 237)), ([System.Drawing.Color]::FromArgb(255, 26, 86, 196)), 90
+    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $bgRect, ([System.Drawing.Color]::FromArgb(255, 74, 77, 84)), ([System.Drawing.Color]::FromArgb(255, 36, 38, 42)), 90
     $g.FillPath($brush, $bg)
+    if ($size -ge 24) {
+        $penWidth = [Math]::Max(1.0, 0.18 * $s)
+        $inset = $penWidth / 2
+        $outline = New-RoundedRect $inset $inset ($size - 2 * $inset) ($size - 2 * $inset) (3.5 * $s - $inset)
+        $pen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(130, 160, 165, 173)), $penWidth
+        $g.DrawPath($pen, $outline)
+        $pen.Dispose(); $outline.Dispose()
+    }
 
     $tile = 4.6 * $s
     $gap = 1.6 * $s
     $origin = ($size - ($tile * 2 + $gap)) / 2
-    $white = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)
+    $white = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 232, 233, 235))
     $accent = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 255, 196, 61))
     for ($row = 0; $row -lt 2; $row++) {
         for ($col = 0; $col -lt 2; $col++) {
