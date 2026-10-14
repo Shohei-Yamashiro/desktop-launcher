@@ -4,7 +4,7 @@
         Title="Desktop Launcher"
         Icon="Assets/app.ico"
         Width="480" Height="600" MinWidth="360" MinHeight="320"
-        WindowStartupLocation="CenterScreen"
+        WindowStartupLocation="Manual"
         ShowInTaskbar="False"
         Topmost="True"
         Background="#F5F6F8"

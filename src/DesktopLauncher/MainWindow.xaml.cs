@@ -39,13 +39,27 @@ public partial class MainWindow : Window
 
     private bool IsSearching => SearchBox.Text.Trim().Length > 0;
 
+    /// <summary>Screen rectangle the window opens from (the mini icon).</summary>
+    public Func<Rect>? Anchor { get; set; }
+
     public void ShowLauncher()
     {
+        if (!IsVisible && Anchor is not null) PlaceNearAnchor(Anchor());
         Show();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate();
         SearchBox.Focus();
         SearchBox.SelectAll();
+    }
+
+    private void PlaceNearAnchor(Rect anchor)
+    {
+        var center = new Point(anchor.X + anchor.Width / 2, anchor.Y + anchor.Height / 2);
+        var placed = WindowPlacement.PlaceNear(anchor, new Size(Width, Height), WindowPlacement.WorkAreaAt(this, center));
+        Left = placed.Left;
+        Top = placed.Top;
+        Width = placed.Width;
+        Height = placed.Height;
     }
 
     public void HideLauncher()

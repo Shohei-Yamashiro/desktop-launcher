@@ -41,6 +41,7 @@ public partial class App : Application
         _mini = new MiniWindow(new SettingsStore(), _hotKey.DisplayText);
         _mini.OpenRequested += _window.ShowLauncher;
         _mini.ExitRequested += ExitApp;
+        _window.Anchor = () => _mini.Bounds;
         _window.IsVisibleChanged += (_, _) =>
         {
             if (_window.IsVisible) _mini.Hide();
