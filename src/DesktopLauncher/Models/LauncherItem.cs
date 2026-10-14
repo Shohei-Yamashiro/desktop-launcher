@@ -22,6 +22,7 @@ public sealed class LauncherItem : INotifyPropertyChanged
     private ImageSource? _icon;
     private bool _isExpanded;
     private bool _isSelected;
+    private bool _isCurrent;
     private DropPosition _dropPosition;
     private IReadOnlyList<string> _tags = [];
 
@@ -61,10 +62,18 @@ public sealed class LauncherItem : INotifyPropertyChanged
         set => SetField(ref _isExpanded, value);
     }
 
+    /// <summary>Part of the (multi-)selection that commands act on.</summary>
     public bool IsSelected
     {
         get => _isSelected;
         set => SetField(ref _isSelected, value);
+    }
+
+    /// <summary>The TreeView's own single selection, used as the keyboard cursor.</summary>
+    public bool IsCurrent
+    {
+        get => _isCurrent;
+        set => SetField(ref _isCurrent, value);
     }
 
     public DropPosition DropPosition
@@ -87,6 +96,13 @@ public sealed class LauncherItem : INotifyPropertyChanged
     }
 
     public bool HasTag(string tag) => _tags.Contains(tag, StringComparer.CurrentCultureIgnoreCase);
+
+    /// <summary>Adds and removes tags while leaving the node's other tags alone.</summary>
+    public void ApplyTagChanges(IEnumerable<string> added, IEnumerable<string> removed)
+    {
+        var remove = new HashSet<string>(removed, StringComparer.CurrentCultureIgnoreCase);
+        SetTags(_tags.Where(t => !remove.Contains(t)).Concat(added));
+    }
 
     /// <summary>True when this node or any enclosing group carries the tag.</summary>
     public bool HasTagIncludingGroups(string tag)

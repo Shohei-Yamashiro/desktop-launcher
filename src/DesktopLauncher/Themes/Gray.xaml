@@ -206,8 +206,12 @@
                         </Grid.ColumnDefinitions>
                         <Border x:Name="Box" Width="18" Height="18" CornerRadius="4" Margin="0,1,0,0" VerticalAlignment="Top"
                                 Background="{StaticResource ControlBrush}" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="1">
-                            <TextBlock x:Name="Check" Text="&#xE73E;" Style="{StaticResource Glyph}" FontSize="12"
-                                       Foreground="{StaticResource OnPrimaryBrush}" Visibility="Collapsed" />
+                            <Grid>
+                                <TextBlock x:Name="Check" Text="&#xE73E;" Style="{StaticResource Glyph}" FontSize="12"
+                                           Foreground="{StaticResource OnPrimaryBrush}" Visibility="Collapsed" />
+                                <TextBlock x:Name="Dash" Text="&#xE738;" Style="{StaticResource Glyph}" FontSize="12"
+                                           Foreground="{StaticResource OnPrimaryBrush}" Visibility="Collapsed" />
+                            </Grid>
                         </Border>
                         <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
                     </Grid>
@@ -216,6 +220,11 @@
                             <Setter TargetName="Box" Property="Background" Value="{StaticResource PrimaryBrush}" />
                             <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource PrimaryBrush}" />
                             <Setter TargetName="Check" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="{x:Null}">
+                            <Setter TargetName="Box" Property="Background" Value="{StaticResource TextTertiaryBrush}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource TextTertiaryBrush}" />
+                            <Setter TargetName="Dash" Property="Visibility" Value="Visible" />
                         </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Box" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
@@ -370,20 +379,10 @@
                         <Trigger SourceName="Bd" Property="IsMouseOver" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource RowHoverBrush}" />
                         </Trigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsSelected" Value="True" />
-                                <Condition Property="Selector.IsSelectionActive" Value="False" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="Bd" Property="Background" Value="{StaticResource RowSelectedInactiveBrush}" />
-                        </MultiTrigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsSelected" Value="True" />
-                                <Condition Property="Selector.IsSelectionActive" Value="True" />
-                            </MultiTrigger.Conditions>
+                        <!-- The launcher keeps its own multi-selection on the item; the TreeView's selection is only the cursor. -->
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
                             <Setter TargetName="Bd" Property="Background" Value="{StaticResource RowSelectedBrush}" />
-                        </MultiTrigger>
+                        </DataTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
