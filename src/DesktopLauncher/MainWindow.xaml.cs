@@ -214,7 +214,7 @@ public partial class MainWindow : Window
             : $"選んだ {nodes.Count} 件に付けるタグ";
         var note = nodes.Any(n => n.IsGroup) ? "グループのタグで絞り込むと、中の項目もすべて表示されます。" : null;
 
-        var dialog = new TagsWindow(heading, note, _tree.AllTags(), nodes.Select(n => n.Tags).ToList(), _tagColors.BrushFor) { Owner = this };
+        var dialog = new TagsWindow(heading, note, _tree.AllTags(), nodes, _tagColors.BrushFor) { Owner = this };
         if (WithModal(dialog.ShowDialog) != true) return;
 
         foreach (var node in nodes) node.ApplyTagChanges(dialog.AddedTags, dialog.RemovedTags);

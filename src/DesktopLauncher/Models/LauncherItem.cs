@@ -122,6 +122,16 @@ public sealed class LauncherItem : INotifyPropertyChanged
         return inherited.Where(t => !HasTag(t)).Distinct(StringComparer.CurrentCultureIgnoreCase).ToArray();
     }
 
+    /// <summary>The nearest enclosing group that carries the tag, or null.</summary>
+    public LauncherItem? InheritedFrom(string tag)
+    {
+        for (var group = Parent; group is not null; group = group.Parent)
+        {
+            if (group.HasTag(tag)) return group;
+        }
+        return null;
+    }
+
     /// <summary>Own and inherited tags.</summary>
     public IEnumerable<string> EffectiveTags() => _tags.Concat(InheritedTags());
 

@@ -56,6 +56,24 @@ public class InheritedTagTests
     }
 
     [Fact]
+    public void InheritedFrom_ReturnsNearestGroupWithTheTag()
+    {
+        var tree = new LauncherTree();
+        var outer = LauncherItem.CreateGroup("Outer");
+        var inner = LauncherItem.CreateGroup("Inner");
+        var item = LauncherItem.CreateItem("A", @"C:\a.exe");
+        outer.SetTags(["shared", "outer"]);
+        inner.SetTags(["shared"]);
+        tree.Insert(outer, null);
+        tree.Insert(inner, outer);
+        tree.Insert(item, inner);
+
+        Assert.Same(inner, item.InheritedFrom("Shared"));
+        Assert.Same(outer, item.InheritedFrom("outer"));
+        Assert.Null(item.InheritedFrom("none"));
+    }
+
+    [Fact]
     public void DisplayTags_FollowMoves()
     {
         var tree = new LauncherTree();
