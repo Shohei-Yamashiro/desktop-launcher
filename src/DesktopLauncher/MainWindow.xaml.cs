@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private readonly ItemStore _store = new();
     private readonly ObservableCollection<LauncherItem> _items = [];
     private readonly ICollectionView _view;
+    private int _modalDepth;
+    private bool _exiting;
 
     public MainWindow()
     {
@@ -26,6 +28,45 @@ public partial class MainWindow : Window
         _view.Filter = MatchesSearch;
         ItemsList.ItemsSource = _view;
         _items.CollectionChanged += (_, _) => UpdateEmptyText();
+
+        LoadItems();
+    }
+
+    public event Action? ClosedToTray;
+
+    public void ShowLauncher()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+        SearchBox.Focus();
+        SearchBox.SelectAll();
+    }
+
+    public void HideLauncher()
+    {
+        SearchBox.Clear();
+        ItemsList.SelectedIndex = -1;
+        Hide();
+    }
+
+    public void ToggleLauncher()
+    {
+        if (IsVisible && IsActive) HideLauncher();
+        else ShowLauncher();
+    }
+
+    public void PrepareExit() => _exiting = true;
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!_exiting)
+        {
+            e.Cancel = true;
+            HideLauncher();
+            ClosedToTray?.Invoke();
+        }
+        base.OnClosing(e);
     }
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
@@ -37,10 +78,36 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.Escape)
+        {
+            if (SearchBox.Text.Length > 0) SearchBox.Clear();
+            else HideLauncher();
+            e.Handled = true;
+            return;
+        }
         base.OnPreviewKeyDown(e);
     }
 
-    private void Window_Loaded(object sender, RoutedEventArgs e)
+    private void Window_Deactivated(object sender, EventArgs e)
+    {
+        if (_modalDepth == 0 && PinButton.IsChecked != true && !_exiting) HideLauncher();
+    }
+
+    /// <summary>Opening a dialog deactivates this window, which must not hide it.</summary>
+    private T WithModal<T>(Func<T> showDialog)
+    {
+        _modalDepth++;
+        try
+        {
+            return showDialog();
+        }
+        finally
+        {
+            _modalDepth--;
+        }
+    }
+
+    private void LoadItems()
     {
         try
         {
@@ -93,10 +160,6 @@ public partial class MainWindow : Window
     {
         switch (e.Key)
         {
-            case Key.Escape:
-                SearchBox.Clear();
-                e.Handled = true;
-                break;
             case Key.Enter:
                 if (_view.Cast<LauncherItem>().FirstOrDefault() is { } first) Launch(first);
                 e.Handled = true;
@@ -180,7 +243,7 @@ public partial class MainWindow : Window
             Multiselect = true,
             DereferenceLinks = false,
         };
-        if (dialog.ShowDialog(this) == true) AddPaths(dialog.FileNames);
+        if (WithModal(() => dialog.ShowDialog(this)) == true) AddPaths(dialog.FileNames);
     }
 
     private void AddFolder_Click(object sender, RoutedEventArgs e)
@@ -190,7 +253,7 @@ public partial class MainWindow : Window
             Title = "追加するフォルダーを選択",
             Multiselect = true,
         };
-        if (dialog.ShowDialog(this) == true) AddPaths(dialog.FolderNames);
+        if (WithModal(() => dialog.ShowDialog(this)) == true) AddPaths(dialog.FolderNames);
     }
 
     private void Window_DragOver(object sender, DragEventArgs e)
@@ -270,6 +333,7 @@ public partial class MainWindow : Window
         try
         {
             Process.Start(startInfo);
+            HideLauncher();
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
@@ -284,7 +348,7 @@ public partial class MainWindow : Window
     private void Rename(LauncherItem item)
     {
         var dialog = new RenameWindow(item.Name) { Owner = this };
-        if (dialog.ShowDialog() != true) return;
+        if (WithModal(dialog.ShowDialog) != true) return;
 
         item.Name = dialog.NewName;
         _view.Refresh();
@@ -313,6 +377,7 @@ public partial class MainWindow : Window
     private static LauncherItem? ItemFrom(object sender) =>
         (sender as FrameworkElement)?.DataContext as LauncherItem;
 
-    private void ShowError(string message) =>
-        MessageBox.Show(this, message, Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+    private void ShowError(string message) => WithModal(() => IsVisible
+        ? MessageBox.Show(this, message, Title, MessageBoxButton.OK, MessageBoxImage.Warning)
+        : MessageBox.Show(message, Title, MessageBoxButton.OK, MessageBoxImage.Warning));
 }

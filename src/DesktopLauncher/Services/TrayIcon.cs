@@ -1,0 +1,65 @@
+using System.Drawing;
+using System.Windows.Forms;
+
+namespace DesktopLauncher.Services;
+
+public sealed class TrayIcon : IDisposable
+{
+    private const string AppName = "Desktop Launcher";
+
+    private readonly NotifyIcon _icon;
+
+    public TrayIcon(string hotKeyText, Action show, Action exit)
+    {
+        var showItem = new ToolStripMenuItem("表示", null, (_, _) => show())
+        {
+            ShortcutKeyDisplayString = hotKeyText,
+            Font = new Font(SystemFonts.MenuFont ?? Control.DefaultFont, System.Drawing.FontStyle.Bold),
+        };
+        var startupItem = new ToolStripMenuItem("Windows 起動時に開始", null, (_, _) => ToggleStartup());
+        var exitItem = new ToolStripMenuItem("終了", null, (_, _) => exit());
+
+        var menu = new ContextMenuStrip();
+        menu.Items.AddRange([showItem, startupItem, new ToolStripSeparator(), exitItem]);
+        menu.Opening += (_, _) => startupItem.Checked = StartupRegistration.IsEnabled;
+
+        _icon = new NotifyIcon
+        {
+            Icon = LoadIcon(),
+            Text = $"{AppName}（{hotKeyText}）",
+            ContextMenuStrip = menu,
+            Visible = true,
+        };
+        _icon.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left) show();
+        };
+    }
+
+    public void ShowBalloon(string text, ToolTipIcon icon = ToolTipIcon.Info) =>
+        _icon.ShowBalloonTip(5000, AppName, text, icon);
+
+    private static void ToggleStartup()
+    {
+        try
+        {
+            if (StartupRegistration.IsEnabled) StartupRegistration.Disable();
+            else StartupRegistration.Enable();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or System.IO.IOException)
+        {
+            System.Windows.MessageBox.Show($"スタートアップの設定を変更できませんでした。\n\n{ex.Message}", AppName,
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+        }
+    }
+
+    private static Icon LoadIcon() =>
+        (Environment.ProcessPath is { } path ? Icon.ExtractAssociatedIcon(path) : null) ?? SystemIcons.Application;
+
+    public void Dispose()
+    {
+        _icon.Visible = false;
+        _icon.ContextMenuStrip?.Dispose();
+        _icon.Dispose();
+    }
+}
