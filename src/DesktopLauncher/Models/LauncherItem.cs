@@ -190,9 +190,7 @@ public sealed class LauncherItem : INotifyPropertyChanged
         }
     }
 
-    public bool IsUrl => !IsGroup
-        && Uri.TryCreate(Path, UriKind.Absolute, out var uri)
-        && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+    public bool IsUrl => !IsGroup && WebUrl.IsWebUrl(Path);
 
     public event PropertyChangedEventHandler? PropertyChanged;
 

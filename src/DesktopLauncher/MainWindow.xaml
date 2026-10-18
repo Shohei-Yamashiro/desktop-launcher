@@ -290,6 +290,13 @@
                                 <TextBlock Text="フォルダー" />
                             </StackPanel>
                         </Button>
+                        <Button Style="{StaticResource GhostButton}" Click="AddUrl_Click" AutomationProperties.Name="＋URL"
+                                ToolTip="URL を追加します（選んでいるグループの中へ）">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
+                                <TextBlock Text="URL" />
+                            </StackPanel>
+                        </Button>
                         <Button Style="{StaticResource GhostButton}" Click="AddGroup_Click" AutomationProperties.Name="＋グループ"
                                 ToolTip="グループを作ります（選んでいるグループの中へ）">
                             <StackPanel Orientation="Horizontal">
