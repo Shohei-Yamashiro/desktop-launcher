@@ -5,7 +5,7 @@ namespace DesktopLauncher.Services;
 
 public sealed class TrayIcon : IDisposable
 {
-    private const string AppName = "Desktop Launcher";
+    private const string AppName = "#Hashelf";
 
     private readonly NotifyIcon _icon;
 

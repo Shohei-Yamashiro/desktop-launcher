@@ -22,7 +22,7 @@ public partial class MiniWindow : Window
         _settingsStore = settingsStore;
         _settings = settings;
         IconImage.Source = LoadLargestIconFrame();
-        ToolTip = $"Desktop Launcher（{hotKeyText}）\nクリックで開く・ドラッグで移動";
+        ToolTip = $"#Hashelf（{hotKeyText}）\nクリックで開く・ドラッグで移動";
         PlaceInitially();
     }
 

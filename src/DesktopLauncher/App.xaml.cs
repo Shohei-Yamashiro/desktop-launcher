@@ -28,6 +28,15 @@ public partial class App : Application
             return;
         }
 
+        try
+        {
+            StartupRegistration.MigrateLegacy();
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or System.IO.IOException)
+        {
+            // Startup still works under the old name; the user can turn it off and on again in the settings.
+        }
+
         var settingsStore = new SettingsStore();
         var settings = settingsStore.Load();
 
