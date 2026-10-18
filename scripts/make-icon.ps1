@@ -1,12 +1,17 @@
 # Generates src/DesktopLauncher/Assets/app.ico (multi-size, PNG-compressed entries).
+# The logo is a hash: two pale grey stems under two tag-colored bars, each bar with a deep dot at its left end
+# like the tag chips on the rows. Below 24 px the dots are left out and strokes snap to whole pixels.
 param(
     [string]$OutFile = (Join-Path $PSScriptRoot "..\src\DesktopLauncher\Assets\app.ico")
 )
 
 Add-Type -AssemblyName System.Drawing
 
+function C([int]$r, [int]$g, [int]$b, [int]$a = 255) { [System.Drawing.Color]::FromArgb($a, $r, $g, $b) }
+
 function New-RoundedRect([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) {
     $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $r = [Math]::Max(0.01, [Math]::Min($r, [Math]::Min($w, $h) / 2))
     $d = $r * 2
     $path.AddArc($x, $y, $d, $d, 180, 90)
     $path.AddArc($x + $w - $d, $y, $d, $d, 270, 90)
@@ -16,50 +21,64 @@ function New-RoundedRect([float]$x, [float]$y, [float]$w, [float]$h, [float]$r) 
     return $path
 }
 
+function Fill($g, $color, $path) {
+    $brush = New-Object System.Drawing.SolidBrush $color
+    $g.FillPath($brush, $path)
+    $brush.Dispose(); $path.Dispose()
+}
+
 function New-IconPng([int]$size) {
     $bmp = New-Object System.Drawing.Bitmap $size, $size
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
     $g.Clear([System.Drawing.Color]::Transparent)
 
     $s = $size / 16.0
     $bgRect = New-Object System.Drawing.RectangleF 0, 0, $size, $size
     $bg = New-RoundedRect 0 0 $size $size (3.5 * $s)
-    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $bgRect, ([System.Drawing.Color]::FromArgb(255, 74, 77, 84)), ([System.Drawing.Color]::FromArgb(255, 36, 38, 42)), 90
+    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $bgRect, (C 74 77 84), (C 36 38 42), 90
     $g.FillPath($brush, $bg)
+    $brush.Dispose(); $bg.Dispose()
     if ($size -ge 24) {
         $penWidth = [Math]::Max(1.0, 0.18 * $s)
         $inset = $penWidth / 2
         $outline = New-RoundedRect $inset $inset ($size - 2 * $inset) ($size - 2 * $inset) (3.5 * $s - $inset)
-        $pen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(130, 160, 165, 173)), $penWidth
+        $pen = New-Object System.Drawing.Pen (C 160 165 173 130), $penWidth
         $g.DrawPath($pen, $outline)
         $pen.Dispose(); $outline.Dispose()
     }
 
-    # Three list rows; the middle one is the selected row. Small sizes snap to whole pixels to stay crisp.
-    $band = 2.8 * $s
-    $gap = 1.3 * $s
-    $width = 10.6 * $s
-    if ($size -lt 32) { $band = [Math]::Round($band); $gap = [Math]::Max(1, [Math]::Round($gap)); $width = [Math]::Round($width) }
-    $left = [Math]::Round(($size - $width) / 2)
-    $top = [Math]::Round(($size - ($band * 3 + $gap * 2)) / 2)
-    $white = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 232, 233, 235))
-    $accent = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 255, 196, 61))
-    $slot = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(150, 36, 38, 42))
-    for ($row = 0; $row -lt 3; $row++) {
-        $y = $top + $row * ($band + $gap)
-        $radius = [Math]::Max(0.5, [Math]::Min($band / 2, 0.9 * $s))
-        $bandPath = New-RoundedRect $left $y $width $band $radius
-        $g.FillPath($(if ($row -eq 1) { $accent } else { $white }), $bandPath)
-        $bandPath.Dispose()
+    # One stroke width for all four strokes; stems and bars sit on the thirds of an 11.2-unit square.
+    $snap = $size -lt 32
+    $t = 2.3 * $s
+    $left = 2.4 * $s; $right = 13.6 * $s; $top = 2.4 * $s; $bottom = 13.6 * $s
+    $y1 = 6.0 * $s; $y2 = 10.0 * $s
+    if ($snap) {
+        $t = [Math]::Max(2, [Math]::Round($t))
+        $left = [Math]::Round($left); $right = [Math]::Round($right); $top = [Math]::Round($top); $bottom = [Math]::Round($bottom)
+        $y1 = [Math]::Round($y1 - $t / 2) + $t / 2; $y2 = [Math]::Round($y2 - $t / 2) + $t / 2
+    }
 
-        if ($size -ge 32) {
-            # The item's icon at the start of each row.
-            $inset = 0.55 * $s
-            $square = $band - 2 * $inset
-            $slotPath = New-RoundedRect ($left + $inset) ($y + $inset) $square $square ([Math]::Max(0.5, 0.45 * $s))
-            $g.FillPath($slot, $slotPath)
-            $slotPath.Dispose()
+    $stem = New-Object System.Drawing.Pen (C 226 228 232), $t
+    $stem.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $stem.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $slant = 0.6 * $s
+    foreach ($x in @((6.0 * $s), (10.0 * $s))) {
+        $g.DrawLine($stem, $x + $slant, $top + $t / 2, $x - $slant, $bottom - $t / 2)
+    }
+    $stem.Dispose()
+
+    $bars = @(
+        @{ Y = $y1; Fill = (C 168 204 250); Dot = (C 38 92 178) },
+        @{ Y = $y2; Fill = (C 166 222 186); Dot = (C 30 122 72) })
+    foreach ($bar in $bars) {
+        Fill $g $bar.Fill (New-RoundedRect $left ($bar.Y - $t / 2) ($right - $left) $t ($t / 2))
+        if ($size -ge 24) {
+            $r = 0.3 * $t
+            $dot = New-Object System.Drawing.SolidBrush $bar.Dot
+            $g.FillEllipse($dot, $left + $t / 2 - $r, $bar.Y - $r, 2 * $r, 2 * $r)
+            $dot.Dispose()
         }
     }
 

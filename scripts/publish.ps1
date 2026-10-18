@@ -6,7 +6,7 @@
     Text files are written as UTF-8 with BOM and CRLF so that Notepad shows Japanese correctly.
 #>
 param(
-    [string]$Output = "artifacts\DesktopLauncher"
+    [string]$Output = "artifacts\Hashelf"
 )
 
 $ErrorActionPreference = "Stop"
@@ -32,7 +32,7 @@ function Section([string]$title, [string]$body) {
 }
 
 # The runtime packs that were bundled, at the exact versions recorded in deps.json.
-$deps = Read-Text (Join-Path $out "DesktopLauncher.deps.json")
+$deps = Read-Text (Join-Path $out "Hashelf.deps.json")
 $assets = Read-Text (Join-Path $root "src\DesktopLauncher\obj\project.assets.json") | ConvertFrom-Json
 $packages = @($assets.packageFolders.PSObject.Properties.Name)[0]
 function Get-RuntimePackFile([string]$id, [string]$file) {
