@@ -275,36 +275,48 @@
                             </Border>
                         </Popup>
                     </Grid>
-                    <StackPanel Orientation="Horizontal" Margin="-4,6,0,0">
-                        <Button Style="{StaticResource GhostButton}" Click="AddFile_Click" AutomationProperties.Name="＋ファイル"
-                                ToolTip="ファイルを追加します（選んでいるグループの中へ）">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
-                                <TextBlock Text="ファイル" />
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource GhostButton}" Click="AddFolder_Click" AutomationProperties.Name="＋フォルダー"
-                                ToolTip="フォルダーを追加します（選んでいるグループの中へ）">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
-                                <TextBlock Text="フォルダー" />
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource GhostButton}" Click="AddUrl_Click" AutomationProperties.Name="＋URL"
-                                ToolTip="URL を追加します（選んでいるグループの中へ）">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
-                                <TextBlock Text="URL" />
-                            </StackPanel>
-                        </Button>
-                        <Button Style="{StaticResource GhostButton}" Click="AddGroup_Click" AutomationProperties.Name="＋グループ"
-                                ToolTip="グループを作ります（選んでいるグループの中へ）">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
-                                <TextBlock Text="グループ" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                    <DockPanel Margin="-4,6,-4,0">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                            <Button Style="{StaticResource GhostButton}" Click="ExpandAll_Click" AutomationProperties.Name="すべてのグループを開く"
+                                    ToolTip="すべてのグループを開く">
+                                <TextBlock Text="&#xE70D;" Style="{StaticResource Glyph}" FontSize="12" />
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Click="CollapseAll_Click" AutomationProperties.Name="すべてのグループを閉じる"
+                                    ToolTip="すべてのグループを閉じる">
+                                <TextBlock Text="&#xE70E;" Style="{StaticResource Glyph}" FontSize="12" />
+                            </Button>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Style="{StaticResource GhostButton}" Click="AddFile_Click" AutomationProperties.Name="＋ファイル"
+                                    ToolTip="ファイルを追加します（選んでいるグループの中へ）">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
+                                    <TextBlock Text="ファイル" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Click="AddFolder_Click" AutomationProperties.Name="＋フォルダー"
+                                    ToolTip="フォルダーを追加します（選んでいるグループの中へ）">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
+                                    <TextBlock Text="フォルダー" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Click="AddUrl_Click" AutomationProperties.Name="＋URL"
+                                    ToolTip="URL を追加します（選んでいるグループの中へ）">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
+                                    <TextBlock Text="URL" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Click="AddGroup_Click" AutomationProperties.Name="＋グループ"
+                                    ToolTip="グループを作ります（選んでいるグループの中へ）">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE710;" Style="{StaticResource Glyph}" FontSize="11" Margin="0,0,6,0" />
+                                    <TextBlock Text="グループ" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </DockPanel>
                     <ItemsControl x:Name="TagBar" Margin="0,8,0,-6" Visibility="Collapsed" Focusable="False">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

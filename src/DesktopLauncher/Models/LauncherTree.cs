@@ -129,6 +129,22 @@ public sealed class LauncherTree
 
     public IEnumerable<LauncherItem> Groups() => All().Where(n => n.IsGroup);
 
+    /// <summary>
+    /// Opens or closes every group, or only <paramref name="group"/> and the groups inside it.
+    /// Returns whether anything changed.
+    /// </summary>
+    public bool SetExpanded(bool expanded, LauncherItem? group = null)
+    {
+        var groups = group is null ? Groups() : Flatten([group]).Where(n => n.IsGroup);
+        var changed = false;
+        foreach (var g in groups.Where(g => g.IsExpanded != expanded))
+        {
+            g.IsExpanded = expanded;
+            changed = true;
+        }
+        return changed;
+    }
+
     /// <summary>Every tag used by at least one item, sorted.</summary>
     public IReadOnlyList<string> AllTags() => LauncherItem.NormalizeTags(All().SelectMany(n => n.Tags));
 
