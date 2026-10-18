@@ -4,7 +4,7 @@
         xmlns:controls="clr-namespace:DesktopLauncher.Controls"
         Title="Desktop Launcher"
         Icon="Assets/app.ico"
-        Width="480" Height="600" MinWidth="360" MinHeight="320"
+        Width="480" Height="600" MinWidth="420" MinHeight="320"
         WindowStartupLocation="Manual"
         ShowInTaskbar="False"
         Topmost="True"
@@ -278,12 +278,18 @@
                     <DockPanel Margin="-4,6,-4,0">
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                             <Button Style="{StaticResource GhostButton}" Click="ExpandAll_Click" AutomationProperties.Name="すべてのグループを開く"
-                                    ToolTip="すべてのグループを開く">
-                                <TextBlock Text="&#xE70D;" Style="{StaticResource Glyph}" FontSize="12" />
+                                    ToolTip="すべてのグループを開きます">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE838;" Style="{StaticResource Glyph}" FontSize="13" Margin="0,0,5,0" />
+                                    <TextBlock Text="開く" />
+                                </StackPanel>
                             </Button>
                             <Button Style="{StaticResource GhostButton}" Click="CollapseAll_Click" AutomationProperties.Name="すべてのグループを閉じる"
-                                    ToolTip="すべてのグループを閉じる">
-                                <TextBlock Text="&#xE70E;" Style="{StaticResource Glyph}" FontSize="12" />
+                                    ToolTip="すべてのグループを閉じます">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8B7;" Style="{StaticResource Glyph}" FontSize="13" Margin="0,0,5,0" />
+                                    <TextBlock Text="閉じる" />
+                                </StackPanel>
                             </Button>
                         </StackPanel>
                         <StackPanel Orientation="Horizontal">
