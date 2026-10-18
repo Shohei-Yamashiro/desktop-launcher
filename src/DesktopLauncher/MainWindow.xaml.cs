@@ -119,6 +119,12 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control && Keyboard.FocusedElement is not TextBox
+            && PasteFromClipboard())
+        {
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.Escape)
         {
             if (TagSuggest.IsOpen) TagSuggest.IsOpen = false;
@@ -367,7 +373,7 @@ public partial class MainWindow : Window
     {
         if (_tree.Roots.Count == 0)
         {
-            EmptyText.Text = "ここにファイルやフォルダー、URL をドラッグして追加できます。\n「＋グループ」で階層を作れます。";
+            EmptyText.Text = "ここにファイルやフォルダー、URL をドラッグして追加できます。\nコピーしたものは Ctrl+V で貼り付けられます。「＋グループ」で階層を作れます。";
             EmptyText.Visibility = Visibility.Visible;
         }
         else if (IsSearching && SearchList.Items.Count == 0)
@@ -739,10 +745,7 @@ public partial class MainWindow : Window
     {
         if (data.GetDataPresent(NodeFormat) || data.GetData(DataFormats.UnicodeText) is not string text) return null;
         text = text.Trim();
-        return Uri.TryCreate(text, UriKind.Absolute, out var uri)
-            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)
-            ? text
-            : null;
+        return WebUrl.IsWebUrl(text) ? text : null;
     }
 
     // ---- Context menu ----
@@ -879,23 +882,63 @@ public partial class MainWindow : Window
         Reselect(group);
     }
 
-    private void AddPaths(IEnumerable<string> paths, LauncherItem? parent, int index)
+    private void AddUrl_Click(object sender, RoutedEventArgs e)
     {
-        var existing = _tree.All().Where(n => !n.IsGroup).Select(n => n.Path).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var parent = TargetGroupForAdd();
+        var dialog = new UrlWindow { Owner = this };
+        if (WithModal(dialog.ShowDialog) != true) return;
+
+        ClearFilter();
+        AddPaths([dialog.Url], parent, -1, dialog.ItemName);
+    }
+
+    /// <summary>Registers files copied in Explorer or a URL copied as text. Returns false when there is neither.</summary>
+    private bool PasteFromClipboard()
+    {
+        var parent = TargetGroupForAdd();
+        if (ClipboardContent.Files() is { Length: > 0 } files)
+        {
+            ClearFilter();
+            AddDroppedPaths(files, parent, -1);
+            return true;
+        }
+        if (ClipboardContent.Url() is { } url)
+        {
+            ClearFilter();
+            AddPaths([url], parent, -1);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Files and folders already registered are not added again; their items get selected instead.
+    /// URLs may be registered more than once.
+    /// </summary>
+    private void AddPaths(IEnumerable<string> paths, LauncherItem? parent, int index, string? name = null)
+    {
+        var existing = new Dictionary<string, LauncherItem>(StringComparer.OrdinalIgnoreCase);
+        foreach (var node in _tree.All().Where(n => !n.IsGroup)) existing.TryAdd(node.Path, node);
+
         var notRecycled = new List<string>();
-        LauncherItem? last = null;
+        var touched = new List<LauncherItem>();
         foreach (var path in paths)
         {
-            if (!existing.Add(path)) continue;
+            if (!WebUrl.IsWebUrl(path) && existing.TryGetValue(path, out var registered))
+            {
+                if (!touched.Contains(registered)) touched.Add(registered);
+                continue;
+            }
 
-            var item = LauncherItem.CreateItem(DefaultName(path), CaptureShortcut(path, notRecycled));
+            var item = LauncherItem.CreateItem(name ?? DefaultName(path), CaptureShortcut(path, notRecycled));
             item.Icon = LoadIcon(item);
             _tree.Insert(item, parent, index);
             if (index >= 0) index++;
-            last = item;
+            existing.TryAdd(path, item);
+            touched.Add(item);
         }
 
-        if (last is not null) Reselect(last);
+        if (touched.Count > 0) Reselect(touched);
         if (notRecycled.Count > 0)
         {
             ShowError("ランチャーには登録しましたが、元のショートカットをごみ箱に移せませんでした。\n"
@@ -956,7 +999,7 @@ public partial class MainWindow : Window
 
     private static string DefaultName(string path)
     {
-        if (Uri.TryCreate(path, UriKind.Absolute, out var uri) && !uri.IsFile) return uri.Host;
+        if (WebUrl.IsWebUrl(path)) return WebUrl.DefaultName(path);
         if (Directory.Exists(path))
         {
             var name = new DirectoryInfo(path).Name;
