@@ -123,4 +123,51 @@ public class LauncherTreeTests
         Assert.Equal(2, tree.Depth(leaf));
         Assert.Equal("g1 / g2", leaf.Location);
     }
+
+    private static (LauncherTree Tree, LauncherItem Work, LauncherItem Inner, LauncherItem Games) Groups()
+    {
+        var tree = new LauncherTree();
+        var work = LauncherItem.CreateGroup("仕事");
+        var inner = LauncherItem.CreateGroup("資料");
+        var games = LauncherItem.CreateGroup("ゲーム");
+        tree.Insert(work, null);
+        tree.Insert(inner, work);
+        tree.Insert(Item("a"), inner);
+        tree.Insert(games, null);
+        return (tree, work, inner, games);
+    }
+
+    [Fact]
+    public void SetExpanded_All_OpensAndClosesEveryGroup()
+    {
+        var (tree, work, inner, games) = Groups();
+
+        Assert.True(tree.SetExpanded(true));
+        Assert.All([work, inner, games], g => Assert.True(g.IsExpanded));
+        Assert.Equal(["仕事", "資料", "a", "ゲーム"], Names(tree.Visible()));
+
+        Assert.True(tree.SetExpanded(false));
+        Assert.All([work, inner, games], g => Assert.False(g.IsExpanded));
+        Assert.Equal(["仕事", "ゲーム"], Names(tree.Visible()));
+    }
+
+    [Fact]
+    public void SetExpanded_Group_OnlyTouchesThatGroupAndItsGroups()
+    {
+        var (tree, work, inner, games) = Groups();
+
+        Assert.True(tree.SetExpanded(true, work));
+
+        Assert.True(work.IsExpanded);
+        Assert.True(inner.IsExpanded);
+        Assert.False(games.IsExpanded);
+    }
+
+    [Fact]
+    public void SetExpanded_NothingToChange_ReturnsFalse()
+    {
+        var (tree, _, _, _) = Groups();
+
+        Assert.False(tree.SetExpanded(false));
+    }
 }

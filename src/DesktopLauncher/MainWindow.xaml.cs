@@ -768,12 +768,20 @@ public partial class MainWindow : Window
         if (node is null)
         {
             menu.Items.Add(MenuItem("新しいグループ", () => AddGroup(null)));
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuItem("すべてのグループを開く", () => SetExpanded(true, null)));
+            menu.Items.Add(MenuItem("すべてのグループを閉じる", () => SetExpanded(false, null)));
             return menu;
         }
 
         if (node.IsGroup)
         {
             menu.Items.Add(MenuItem(node.IsExpanded ? "閉じる" : "開く", () => node.IsExpanded = !node.IsExpanded, bold: true));
+            if (node.Children.Any(c => c.IsGroup))
+            {
+                menu.Items.Add(MenuItem("中のグループもすべて開く", () => SetExpanded(true, node)));
+                menu.Items.Add(MenuItem("中のグループもすべて閉じる", () => SetExpanded(false, node)));
+            }
             menu.Items.Add(MenuItem("この中に新しいグループ", () => AddGroup(node)));
             menu.Items.Add(MenuItem("タグを編集…", () => EditTags([node])));
         }
@@ -869,6 +877,35 @@ public partial class MainWindow : Window
     }
 
     private void AddGroup_Click(object sender, RoutedEventArgs e) => AddGroup(TargetGroupForAdd());
+
+    private void ExpandAll_Click(object sender, RoutedEventArgs e) => SetExpanded(true, null);
+
+    private void CollapseAll_Click(object sender, RoutedEventArgs e) => SetExpanded(false, null);
+
+    /// <summary>Opens or closes all groups (or a group and the groups inside it). Selection hidden by closing moves to the group that hides it.</summary>
+    private void SetExpanded(bool expanded, LauncherItem? group)
+    {
+        if (!_tree.SetExpanded(expanded, group)) return;
+
+        if (!expanded)
+        {
+            var visible = _tree.Visible().ToHashSet();
+            var hidden = SelectedNodes().Where(n => !visible.Contains(n)).ToList();
+            if (hidden.Count > 0)
+            {
+                var shown = hidden[0].Parent;
+                while (shown is not null && !visible.Contains(shown)) shown = shown.Parent;
+                foreach (var n in hidden) n.IsSelected = false;
+                if (shown is not null)
+                {
+                    shown.IsSelected = true;
+                    _anchor = shown;
+                    SetCurrent(shown);
+                }
+            }
+        }
+        Save();
+    }
 
     private void AddGroup(LauncherItem? parent)
     {
