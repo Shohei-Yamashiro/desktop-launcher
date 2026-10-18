@@ -22,6 +22,7 @@ public sealed record TagView(string Name, bool IsInherited);
 public sealed class LauncherItem : INotifyPropertyChanged
 {
     private string _name = "";
+    private string _path = "";
     private ImageSource? _icon;
     private bool _isExpanded;
     private bool _isSelected;
@@ -49,7 +50,19 @@ public sealed class LauncherItem : INotifyPropertyChanged
         set => SetField(ref _name, value);
     }
 
-    public string Path { get; private init; } = "";
+    /// <summary>File, folder or URL to open. Empty for a group.</summary>
+    public string Path
+    {
+        get => _path;
+        set
+        {
+            if (IsGroup) throw new InvalidOperationException("A group has no path.");
+            if (_path == value) return;
+            _path = value;
+            OnPropertyChanged(nameof(Path));
+            OnPropertyChanged(nameof(IsUrl));
+        }
+    }
 
     public ObservableCollection<LauncherItem> Children { get; } = [];
 
