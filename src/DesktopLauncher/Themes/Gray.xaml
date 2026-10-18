@@ -27,6 +27,8 @@
 
     <!-- Windows -->
     <Style x:Key="ThemedWindow" TargetType="Window">
+        <!-- Named by assembly so the icon also resolves when another app (tools/Screenshots) opens the windows. -->
+        <Setter Property="Icon" Value="pack://application:,,,/Hashelf;component/Assets/app.ico" />
         <Setter Property="Background" Value="{StaticResource WindowBrush}" />
         <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
         <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
