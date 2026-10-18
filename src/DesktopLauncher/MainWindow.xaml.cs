@@ -213,16 +213,26 @@ public partial class MainWindow : Window
         if (_activeTag is not null) SetActiveTag(null);
     }
 
-    private void EditTags(IReadOnlyList<LauncherItem> nodes)
+    /// <summary>One node: name, path or URL, and tags. Several nodes: their tags.</summary>
+    private void Edit(IReadOnlyList<LauncherItem> nodes)
     {
-        var heading = nodes.Count == 1
-            ? (nodes[0].IsGroup ? $"グループ「{nodes[0].Name}」" : $"「{nodes[0].Name}」") + "に付けるタグ"
-            : $"選んだ {nodes.Count} 件に付けるタグ";
+        var heading = $"選んだ {nodes.Count} 件に付けるタグ";
         var note = nodes.Any(n => n.IsGroup) ? "グループのタグで絞り込むと、中の項目もすべて表示されます。" : null;
 
-        var dialog = new TagsWindow(heading, note, _tree.AllTags(), nodes, _tagColors.BrushFor) { Owner = this };
+        var dialog = new EditWindow(heading, note, _tree.AllTags(), nodes, _tagColors.BrushFor) { Owner = this };
         if (WithModal(dialog.ShowDialog) != true) return;
 
+        if (nodes is [var single])
+        {
+            single.Name = dialog.NewName;
+            if (dialog.NewPath is { } path)
+            {
+                var old = single.Path;
+                single.Path = path;
+                single.Icon = LoadIcon(single);
+                if (_store.IsInLinksDirectory(old) && File.Exists(old)) ShortcutFiles.MoveToRecycleBin(old);
+            }
+        }
         foreach (var node in nodes) node.ApplyTagChanges(dialog.AddedTags, dialog.RemovedTags);
         UpdateTagBar();
         if (IsSearching) UpdateSearch();
@@ -528,8 +538,8 @@ public partial class MainWindow : Window
                 Remove(selection);
                 e.Handled = true;
                 break;
-            case Key.F2 when single is not null:
-                Rename(single);
+            case Key.F2:
+                Edit(selection);
                 e.Handled = true;
                 break;
         }
@@ -783,16 +793,14 @@ public partial class MainWindow : Window
                 menu.Items.Add(MenuItem("中のグループもすべて閉じる", () => SetExpanded(false, node)));
             }
             menu.Items.Add(MenuItem("この中に新しいグループ", () => AddGroup(node)));
-            menu.Items.Add(MenuItem("タグを編集…", () => EditTags([node])));
         }
         else
         {
             menu.Items.Add(MenuItem("開く", () => Launch(node), bold: true));
             menu.Items.Add(MenuItem("ファイルの場所を開く", () => OpenLocation(node)));
-            menu.Items.Add(MenuItem("タグを編集…", () => EditTags([node])));
         }
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("名前を変更", () => Rename(node), gesture: "F2"));
+        menu.Items.Add(MenuItem("編集…", () => Edit([node]), gesture: "F2"));
         menu.Items.Add(BuildMoveMenu([node]));
 
         var siblings = _tree.SiblingsOf(node);
@@ -809,7 +817,7 @@ public partial class MainWindow : Window
         var menu = new ContextMenu();
         menu.Items.Add(MenuItem($"{nodes.Count} 件を選択中", () => { }, enabled: false));
         menu.Items.Add(new Separator());
-        menu.Items.Add(MenuItem("タグを編集…", () => EditTags(nodes)));
+        menu.Items.Add(MenuItem("タグを編集…", () => Edit(nodes), gesture: "F2"));
         menu.Items.Add(BuildMoveMenu(nodes));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("ランチャーから削除", () => Remove(nodes), gesture: "Delete"));
@@ -1105,16 +1113,6 @@ public partial class MainWindow : Window
             return;
         }
         Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
-    }
-
-    private void Rename(LauncherItem node)
-    {
-        var dialog = new RenameWindow(node.Name) { Owner = this };
-        if (WithModal(dialog.ShowDialog) != true) return;
-
-        node.Name = dialog.NewName;
-        if (IsSearching) UpdateSearch();
-        Save();
     }
 
     private void Remove(IReadOnlyList<LauncherItem> selection)
