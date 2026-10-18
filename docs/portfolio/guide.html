@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<!--
+  Guide PDF for Hashelf. One <section class="page"> = one A4 page.
+  Print with scripts/build-docs.ps1; screenshots come from tools/Screenshots (fictional sample data).
+  Writing: Japanese, a <br> after every 。 inside a paragraph / list item / table cell.
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>ハッシェルフ（Hashelf）のご紹介</title>
+<style>
+  @page { size: A4; margin: 14mm 16mm; }
+  :root { --accent: #0f6cbd; --accent-fill: #ebf3fc; --text: #1b1b1f; --text2: #4d5059; --text3: #7b7e87; --stroke: #d9dbe0; --surface: #f5f6f8; --ext: #fdf6e7; --ext-stroke: #e3c98f; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--text); font: 10.5pt/1.6 "Yu Gothic UI", "Yu Gothic", "Meiryo", sans-serif; }
+  .page { break-after: page; max-width: 178mm; margin: 0 auto; }
+  .page:last-child { break-after: auto; }
+  @media screen { body { background: #e9eaee; padding: 24px 0; } .page { background: #fff; padding: 14mm 16mm; margin-bottom: 24px; max-width: 210mm; min-height: 297mm; } }
+  h1 { font-size: 24pt; margin: 0; letter-spacing: .02em; line-height: 1.2; }
+  h1 .hash { color: var(--text3); }
+  h2 { font-size: 15pt; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+  h3 { font-size: 11.5pt; margin: 18px 0 6px; }
+  p { margin: 6px 0; }
+  .chapter { font-size: 9pt; color: var(--accent); font-weight: 600; letter-spacing: .08em; margin-bottom: 2px; }
+  .lead { color: var(--text2); font-size: 11pt; margin-top: 8px; }
+  .cover { display: flex; align-items: center; gap: 16px; padding: 14px 0 14px; border-bottom: 1px solid var(--stroke); margin-bottom: 18px; }
+  .cover img { width: 64px; height: 64px; }
+  .reading { font-size: 10pt; color: var(--text3); margin-top: 2px; }
+  .small { font-size: 9pt; color: var(--text3); }
+  ul { margin: 6px 0; padding-left: 1.3em; }
+  li { margin: 3px 0; }
+  kbd { font-family: inherit; font-size: 9pt; border: 1px solid var(--stroke); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: #fff; }
+
+  .flow { display: flex; align-items: stretch; gap: 0; margin: 12px 0 4px; }
+  .flow .step { flex: 1; border: 1px solid var(--stroke); border-radius: 6px; padding: 8px 9px; background: #fff; }
+  .flow .step b { display: block; font-size: 10pt; }
+  .flow .step span { font-size: 8.5pt; color: var(--text2); line-height: 1.5; display: block; margin-top: 2px; }
+  .flow .arrow { width: 16px; display: flex; align-items: center; justify-content: center; color: var(--text3); font-size: 11pt; }
+  .loop { font-size: 9pt; color: var(--accent); text-align: right; margin-top: 2px; }
+
+  .box { border: 1px solid var(--stroke); border-radius: 6px; padding: 6px 9px; background: #fff; font-size: 8.5pt; line-height: 1.5; color: var(--text2); }
+  .box b { display: block; font-size: 9.5pt; color: var(--text); }
+  .box.ext { background: var(--ext); border-color: var(--ext-stroke); }
+  .box.app { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .box.app b { color: #fff; }
+  .box.human { background: var(--accent-fill); border-color: var(--accent); }
+  .harrow { display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text3); font-size: 14pt; line-height: 1; padding: 0 4px; }
+  .harrow small { font-size: 7.5pt; line-height: 1.3; text-align: center; margin-top: 3px; }
+  .varrow { text-align: center; color: var(--text3); font-size: 12pt; line-height: 1.2; }
+
+  .overview { display: grid; grid-template-columns: 34mm 15mm 1fr 15mm 34mm; align-items: center; margin: 10px 0 4px; }
+  .overview .col { display: flex; flex-direction: column; gap: 2px; }
+  .overview .pc { border: 1.5px dashed var(--accent); border-radius: 8px; padding: 6px 8px 8px; }
+  .overview .pc-title { font-size: 8.5pt; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .overview .pc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .legend { display: flex; gap: 14px; font-size: 8pt; color: var(--text3); margin-top: 4px; }
+  .legend span::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; border: 1px solid; }
+  .legend .l-ext::before { background: var(--ext); border-color: var(--ext-stroke); }
+  .legend .l-app::before { background: var(--accent); border-color: var(--accent); }
+  .legend .l-human::before { background: var(--accent-fill); border-color: var(--accent); }
+
+  .screen-row { display: grid; grid-template-columns: 92mm 1fr; gap: 8mm; align-items: start; margin-top: 4px; }
+  figure { margin: 0; break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid var(--stroke); border-radius: 4px; display: block; }
+  figcaption { font-size: 8.5pt; color: var(--text3); margin-top: 4px; }
+  .screen h3 { margin: 4px 0 8px; font-size: 13pt; }
+  .points { margin: 0; padding: 0; list-style: none; counter-reset: p; }
+  .points li { counter-increment: p; padding-left: 1.7em; position: relative; font-size: 10pt; margin: 0 0 10px; }
+  .points li::before { content: counter(p); position: absolute; left: 0; top: .15em; width: 1.25em; height: 1.25em; border-radius: 50%; background: var(--accent); color: #fff; font-size: 8pt; line-height: 1.25em; text-align: center; font-weight: 600; }
+  .features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 8px; }
+  .feature { border-left: 3px solid var(--accent); padding: 2px 0 2px 10px; }
+  .feature b { display: block; }
+  .feature span { color: var(--text2); font-size: 9.5pt; }
+  .steps { counter-reset: s; margin: 8px 0; padding: 0; list-style: none; }
+  .steps > li { counter-increment: s; position: relative; padding-left: 2.1em; margin: 7px 0; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 1.5em; height: 1.5em; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent); font-weight: 700; line-height: 1.4em; text-align: center; font-size: 10pt; }
+
+  .smartscreen { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 24px 0 4px; }
+  .ss { background: #0f5ea8; color: #fff; padding: 12px 14px 10px; border-radius: 2px; font-size: 8pt; line-height: 1.55; min-height: 128px; position: relative; }
+  .ss .t { font-size: 12pt; margin-bottom: 8px; }
+  .ss .link { text-decoration: underline; font-weight: 600; outline: 2px solid #ffd54a; outline-offset: 2px; }
+  .ss .btns { position: absolute; right: 12px; bottom: 10px; display: flex; gap: 6px; }
+  .ss .btn { border: 1px solid #fff; padding: 2px 14px; }
+  .ss .btn.run { outline: 2px solid #ffd54a; outline-offset: 2px; font-weight: 600; }
+  .ss .lbl { position: absolute; left: -2px; top: -18px; color: var(--text2); font-size: 8.5pt; }
+
+  .note { background: var(--surface); border-radius: 6px; padding: 8px 12px; font-size: 9.5pt; margin: 10px 0; }
+  .qa { margin: 0 0 12px; }
+  .qa dt { font-weight: 700; margin-top: 12px; }
+  .qa dt::before { content: "Q. "; color: var(--accent); }
+  .qa dd { margin: 3px 0 0 1.6em; color: var(--text); }
+  table { border-collapse: collapse; width: 100%; font-size: 9.5pt; margin: 6px 0; }
+  th, td { border-bottom: 1px solid var(--stroke); padding: 5px 8px; text-align: left; vertical-align: top; }
+  th { width: 26%; color: var(--text2); font-weight: 600; background: var(--surface); }
+</style>
+</head>
+<body>
+
+<!-- 1. Introduction -->
+<section class="page">
+  <div class="cover">
+    <img src="images/logo.png" alt="">
+    <div>
+      <div class="chapter">ご紹介</div>
+      <h1><span class="hash">#</span>Hashelf</h1>
+      <div class="reading">ハッシェルフ</div>
+      <p class="lead">よく使うファイル・フォルダー・Web ページを 1 か所にまとめ、キー操作ひとつで呼び出して開く Windows 用のランチャーです。<br>
+      グループとタグで整理し、名前や「#タグ」ですぐに見つけられます。</p>
+    </div>
+  </div>
+
+  <h2>全体の概要</h2>
+  <div class="overview">
+    <div class="col">
+      <div class="box ext"><b>ファイル・フォルダー</b>デスクトップやエクスプローラーにあるもの</div>
+      <div class="varrow">＋</div>
+      <div class="box ext"><b>Web ページ</b>ブラウザで開いている URL</div>
+    </div>
+    <div class="harrow">→<small>ドラッグ・<br>貼り付けで登録</small></div>
+    <div class="pc">
+      <div class="pc-title">お使いのパソコン</div>
+      <div class="box app"><b>Hashelf（このアプリ）</b>登録 → グループ・タグで整理 → 呼び出して開く</div>
+      <div class="pc-row">
+        <div class="box"><b>data フォルダ</b>登録した項目・タグ・設定（アプリのフォルダの中）</div>
+        <div class="box human"><b>画面</b>Ctrl + Alt + Space でいつでも呼び出す</div>
+      </div>
+    </div>
+    <div class="harrow">→<small>開く</small></div>
+    <div class="col">
+      <div class="box ext"><b>開く先</b>ふだん使っているブラウザ、ファイルに関連付けられたアプリ、エクスプローラー</div>
+    </div>
+  </div>
+  <div class="legend"><span class="l-ext">パソコンにあるもの・Web</span><span class="l-app">このアプリ</span><span class="l-human">利用者の操作</span></div>
+  <p class="small">インターネットとの通信は行いません。<br>登録した Web ページは、開くときにブラウザが表示します。</p>
+
+  <h2 style="margin-top:18px">こんな困りごとはありませんか</h2>
+  <ul>
+    <li>デスクトップがショートカットで埋まり、目的のものを探すのに時間がかかる。</li>
+    <li>よく使うフォルダーが深い階層にあり、毎回たどるのが面倒。</li>
+    <li>ファイル・フォルダー・ブックマークが別々の場所にあり、仕事の道具がばらばら。</li>
+    <li>フォルダーで分けると、「毎日使うもの」のように分類をまたいだ探し方ができない。</li>
+  </ul>
+
+  <h2 style="margin-top:18px">使い方の流れ</h2>
+  <div class="flow">
+    <div class="step"><b>登録する</b><span>ファイル・フォルダー・URL をドラッグや貼り付けで追加します。</span></div>
+    <div class="arrow">›</div>
+    <div class="step"><b>整理する</b><span>グループで分け、タグを付けます。</span></div>
+    <div class="arrow">›</div>
+    <div class="step"><b>呼び出す</b><span>どの作業中でも Ctrl + Alt + Space で開きます。</span></div>
+    <div class="arrow">›</div>
+    <div class="step"><b>探す</b><span>名前や「#タグ」で絞り込みます。</span></div>
+    <div class="arrow">›</div>
+    <div class="step"><b>開く</b><span>Enter かダブルクリックで開き、画面は小さくなります。</span></div>
+  </div>
+  <p class="loop">グループに付けたタグは中の項目にも引き継がれるので、整理するほど探しやすくなります。</p>
+</section>
+
+<!-- 2. Features -->
+<section class="page">
+  <div class="chapter">ご紹介</div>
+  <h2>特長</h2>
+  <div class="features">
+    <div class="feature"><b>タグをグループから引き継ぐ</b><span>グループに付けたタグは、中の項目すべてに付いているものとして扱います。<br>引き継いだタグは点線の枠で表示し、項目に直接付けたタグと見分けられます。</span></div>
+    <div class="feature"><b>「#タグ」ですぐに絞り込む</b><span>検索欄に「#」と入力すると、今あるタグが件数付きで候補に出ます。<br>名前とタグを組み合わせて絞り込むこともできます。</span></div>
+    <div class="feature"><b>キー操作ひとつで呼び出す</b><span>どのアプリを使っていても、Ctrl + Alt + Space で開きます。<br>検索して Enter で開くまで、キーボードだけで操作できます。</span></div>
+    <div class="feature"><b>画面の隅で小さく待機</b><span>使わないときは小さいアイコンになり、画面の隅に残ります。<br>クリックで開き、ドラッグで好きな場所に動かせます。</span></div>
+    <div class="feature"><b>デスクトップのショートカットを片付ける</b><span>ショートカットを登録すると、アプリのフォルダーに取り込み、元のファイルはごみ箱に移します。<br>この動きは設定で止められます。</span></div>
+    <div class="feature"><b>データは手元のフォルダーだけ</b><span>登録した内容は、展開したフォルダーの中に保存します。<br>フォルダーごとコピーすれば、バックアップや持ち運びができます。</span></div>
+  </div>
+
+  <h3 style="margin-top:24px">今後の予定</h3>
+  <ul>
+    <li>呼び出すキー（Ctrl + Alt + Space）を変更できるようにする。</li>
+    <li>登録した内容を書き出して、別のパソコンに読み込めるようにする。</li>
+  </ul>
+
+  <h3 style="margin-top:24px">制作について</h3>
+  <p>このアプリは、作者が AI コーディングエージェント（Cursor）と協働して開発しました。<br>
+  要件と設計の判断、動作の確認は作者が行い、コードの作成は主に AI エージェントが担当しています。</p>
+  <p class="small">このあとの画面の例に写っている会社のフォルダー名や URL（example.com）は、すべて架空のものです。</p>
+</section>
+
+<!-- 3. Screens -->
+<section class="page">
+  <div class="chapter">ご紹介</div>
+  <h2>画面の紹介</h2>
+  <div class="screen">
+    <h3>メイン画面</h3>
+    <div class="screen-row">
+      <figure><img src="images/main.png" alt="メイン画面"><figcaption>画面の例（架空のサンプル）</figcaption></figure>
+      <ol class="points">
+        <li>グループで階層に分けて並べられます。<br>右上の「開く」「閉じる」で、すべてのグループをまとめて開いたり閉じたりできます。</li>
+        <li>背景に色が付いたタグは、項目に直接付けたタグです。<br>点線の枠で丸が白抜きのタグは、グループから引き継いだタグです。</li>
+        <li>上の段のタグを押すと、そのタグが付いた項目だけを表示します。<br>もう一度押すと元に戻ります。</li>
+        <li>「＋ファイル」「＋フォルダー」「＋URL」「＋グループ」で追加できます。<br>エクスプローラーやブラウザからのドラッグや、コピーしたものの Ctrl + V でも登録できます。</li>
+        <li>項目を右クリックすると、「編集…」「移動」「上へ」「下へ」「ランチャーから削除」などが選べます。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="chapter">ご紹介</div>
+  <h2>画面の紹介</h2>
+  <div class="screen">
+    <h3>「#タグ」で探す</h3>
+    <div class="screen-row">
+      <figure><img src="images/search.png" alt="タグで探しているところ"><figcaption>「#毎」と入力したところ（架空のサンプル）</figcaption></figure>
+      <ol class="points">
+        <li>検索欄に「#」に続けて入力すると、今あるタグが件数付きで候補に出ます。<br>↑↓ で選んで Tab か Enter で決めます。</li>
+        <li>結果には、名前とタグに加えて、どのグループにあるかを右側に表示します。<br>グループから引き継いだタグでも見つかります。</li>
+        <li>名前とタグは組み合わせられます（例：「#毎日 メモ」）。</li>
+        <li>検索欄で Enter を押すと先頭の結果が選ばれ、もう一度 Enter を押すと開きます。<br>Esc を押すたびに、候補、検索の文字の順に消え、最後に画面が小さくなります。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="chapter">ご紹介</div>
+  <h2>画面の紹介</h2>
+  <div class="screen">
+    <h3>「編集」画面</h3>
+    <div class="screen-row">
+      <figure><img src="images/edit.png" alt="編集画面"><figcaption>Web ページの項目を編集しているところ（架空のサンプル）</figcaption></figure>
+      <ol class="points">
+        <li>項目を右クリックして「編集…」を選ぶか、F2 を押すと開きます。<br>名前と、ファイル・フォルダーの場所または URL を変更できます。<br>ファイルとフォルダーは「参照…」で選び直せます。</li>
+        <li>薄いチェックは、上位のグループから引き継いでいるタグです。<br>どのグループから引き継いでいるかが表示されます。<br>チェックすると、項目自身にもタグが付きます。</li>
+        <li>下の欄にタグ名を入力して Enter を押すと、新しいタグを作れます。</li>
+        <li>複数の項目を選んでいるときは、右クリックの「タグを編集…」で、タグだけをまとめて変更できます。</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Getting started -->
+<section class="page">
+  <div class="chapter">はじめかた</div>
+  <h2>はじめかた</h2>
+
+  <p class="note"><b>動作環境：</b>Windows 10 / 11（64 ビット版）。<br>インストールは不要で、ほかのソフトを別に入れる必要もありません。<br>Mac やスマートフォンには対応していません。</p>
+
+  <ol class="steps">
+    <li><b>ダウンロードする</b><br>作者が公開している配布ページ（Google Drive）で zip ファイルをダウンロードします。<br>Google Drive が「ウイルス スキャンを実行できません」などの確認を表示した場合は、内容を確認のうえダウンロードを続けてください。</li>
+    <li><b>展開する</b><br>ダウンロードした zip ファイルを右クリックし、「すべて展開」を選びます。<br>zip のまま中のファイルを開くと、正しく動きません。<br>
+      <span class="small">展開する前に、zip ファイルを右クリック →「プロパティ」→「許可する」にチェック →「OK」とすると、次の手順の警告が出なくなる場合があります。</span></li>
+    <li><b>起動する</b><br>展開したフォルダの <b>Hashelf.exe</b> をダブルクリックします。<br>ランチャーの画面が開き、画面右下の通知領域にもアイコンが出ます。<br>
+      初めて起動するとき、次のような警告が出ることがあります。<br><b>「詳細情報」を押し、表示された「実行」を押してください。</b>
+      <div class="smartscreen">
+        <div class="ss"><div class="lbl">① 最初の画面</div>
+          <div class="t">Windows によって PC が保護されました</div>
+          Microsoft Defender SmartScreen は認識されないアプリの起動を停止しました。このアプリを実行すると、PC に問題が起こる可能性があります。<br><br>
+          <span class="link">詳細情報</span>
+          <div class="btns"><span class="btn">実行しない</span></div>
+        </div>
+        <div class="ss"><div class="lbl">② 「詳細情報」を押した後</div>
+          <div class="t">Windows によって PC が保護されました</div>
+          Microsoft Defender SmartScreen は認識されないアプリの起動を停止しました。このアプリを実行すると、PC に問題が起こる可能性があります。<br>
+          アプリ: Hashelf.exe<br>発行元: 不明な発行元
+          <div class="btns"><span class="btn run">実行</span><span class="btn">実行しない</span></div>
+        </div>
+      </div>
+      <p class="small">画面は一例です。<br>Windows のバージョンによって表示が異なります。<br>この警告は、発行元を証明する電子署名を付けていないアプリで表示されます。</p></li>
+  </ol>
+</section>
+
+<section class="page">
+  <div class="chapter">はじめかた</div>
+  <h2>はじめかた（続き）</h2>
+  <ol class="steps" style="counter-reset: s 3">
+    <li><b>試してみる</b><br>
+      最初は何も登録されていません。<br>
+      よく使うフォルダーを画面にドラッグするか、「＋フォルダー」で選んで登録します。<br>
+      登録した項目を右クリックして「編集…」を選び、タグを付けてみてください。<br>
+      検索欄に「#」と入力すると、付けたタグが候補に出ます。<br>
+      <span class="small">ドラッグするときは、右上のピンのボタン（固定）をオンにすると、画面が小さくならずに済みます。</span></li>
+    <li><b>呼び出す・しまう</b><br>
+      Ctrl + Alt + Space で開き、もう一度押すか Esc で小さいアイコンに戻ります。<br>
+      ほかのウィンドウをクリックしたときも、小さいアイコンに戻ります。</li>
+    <li><b>終了する</b><br>通知領域のアイコンか小さいアイコンを右クリックし、「終了」を選びます。<br>
+      ランチャーの画面を閉じても、アプリは終了せず小さいアイコンになります。</li>
+  </ol>
+
+  <h3>Windows 起動時に開始</h3>
+  <p>通知領域のアイコンを右クリックして「Windows 起動時に開始」を選ぶと、Windows にサインインしたときに自動で起動します。<br>
+  この設定をオンにしたときだけ、Windows の設定（レジストリ）に登録します。</p>
+
+  <h3>削除するとき</h3>
+  <p>「Windows 起動時に開始」をオンにしている場合は、先にオフにします。<br>
+  アプリを終了してから、展開したフォルダごと削除してください。<br>
+  このアプリは、展開したフォルダの外にファイルを作りません。<br>
+  <span class="small">オフにせずに削除した場合は、タスク マネージャーの「スタートアップ アプリ」に「Hashelf」が残ります。<br>そのままでも害はありませんが、右クリックして「無効化」を選べば止められます。</span></p>
+
+  <h3>うまく動かないとき</h3>
+  <ul>
+    <li><b>Ctrl + Alt + Space で開かない：</b>ほかのアプリが同じキーを使っていると、起動時に「登録できませんでした」と通知が出ます。<br>通知領域のアイコンか、小さいアイコンをクリックして開いてください。</li>
+    <li><b>ドラッグしようとすると画面が小さくなる：</b>右上のピンのボタン（固定）をオンにしてから、ドラッグしてください。</li>
+    <li><b>「見つかりません。移動または削除された可能性があります。」と出る：</b>登録したファイルやフォルダーが移動または削除されています。<br>右クリックの「編集…」で場所を選び直してください。</li>
+  </ul>
+</section>
+
+<!-- 5. FAQ -->
+<section class="page">
+  <div class="chapter">よくある質問</div>
+  <h2>よくある質問</h2>
+  <dl class="qa">
+    <dt>起動時に警告が出ました。安全ですか？</dt>
+    <dd>この警告は、発行元を証明する電子署名を付けていないアプリで表示されるものです。<br>
+      署名には費用がかかるため、本アプリには付けていません。<br>
+      本アプリは、作者が公開している配布ページ（Google Drive）からのみ配布しています。<br>
+      それ以外の場所から入手したファイルは使わないでください。</dd>
+
+    <dt>費用はかかりますか？</dt>
+    <dd>本アプリは無料です。<br>ほかのサービスの契約なども必要ありません。</dd>
+
+    <dt>データはどこに保存されますか？外部に送られることはありますか？</dt>
+    <dd>登録した項目・タグ・設定は、展開したフォルダの中の data フォルダに保存します。<br>
+      本アプリはインターネットとの通信を行わず、作者がこれらの情報を受け取ることもありません。</dd>
+
+    <dt>ショートカットがデスクトップから消えました。</dt>
+    <dd>初期設定では、ショートカットを登録すると、そのコピーをアプリのフォルダーに取り込み、元のショートカットをごみ箱に移します。<br>
+      元に戻したいときは、ごみ箱から元に戻してください。<br>
+      右上の歯車のボタン（設定）で「ショートカット（.lnk / .url）を登録したら、元のファイルをごみ箱に移す」のチェックを外すと、元のファイルは残ります。<br>
+      ショートカット以外のファイルやフォルダーは、移動もコピーもしません。</dd>
+
+    <dt>Mac やスマートフォンで使えますか？</dt>
+    <dd>使えません。<br>Windows 10 / 11（64 ビット版）専用です。</dd>
+
+    <dt>パソコンを替えたいときは？</dt>
+    <dd>アプリを終了してから、展開したフォルダごと新しいパソコンにコピーします。<br>
+      登録した内容とタグは、そのまま引き継がれます。<br>
+      ただし、登録したファイルやフォルダーが新しいパソコンの同じ場所にない場合は開けないため、「編集…」で場所を選び直してください。<br>
+      「Windows 起動時に開始」は、新しいパソコンでオンにし直してください。</dd>
+  </dl>
+</section>
+
+<!-- 6. Terms summary (must match LICENSE.txt) -->
+<section class="page">
+  <div class="chapter">利用条件</div>
+  <h2>利用条件の要約</h2>
+  <p>ご利用の前に、同梱の <b>LICENSE.txt</b>（利用条件）をお読みください。<br>主な内容は次のとおりです。<br>正式な内容は LICENSE.txt の記載に従います。</p>
+  <table>
+    <tr><th>利用</th><td>個人・法人、営利・非営利を問わず、無償で利用できます。</td></tr>
+    <tr><th>再配布</th><td>作者の許諾なく、本アプリを第三者に配布することはできません（改変の有無を問いません）。<br>ダウンロードページへのリンクを伝えることは自由です。</td></tr>
+    <tr><th>改変など</th><td>本アプリの改変、改変したものの配布、販売・貸与はできません。</td></tr>
+    <tr><th>データ</th><td>登録した内容は、お使いのパソコンの中（アプリのフォルダ内）にだけ保存します。<br>インターネットとの通信は行わず、作者が情報を集めることもありません。</td></tr>
+    <tr><th>無保証</th><td>本アプリは現状のまま提供され、作者は一切の保証をしません。<br>本アプリは、操作に応じてファイル・フォルダー・URL を開き、設定によりショートカットのファイルをごみ箱に移します。<br>内容を確認のうえ、ご自身の判断でお使いください。</td></tr>
+    <tr><th>責任の制限</th><td>本アプリの利用によって生じた損害について、作者は責任を負いません（作者の故意または重大な過失による場合を除きます）。</td></tr>
+    <tr><th>外部部品</th><td>本アプリに含まれる外部の部品には、それぞれのライセンスが適用されます（同梱の THIRD-PARTY-NOTICES.txt）。</td></tr>
+  </table>
+</section>
+
+</body>
+</html>
