@@ -10,7 +10,8 @@ using DesktopLauncher.Services;
 namespace Screenshots;
 
 /// <summary>
-/// Usage: Screenshots.exe [output folder]. Writes main.png, search.png, edit.png and logo.png (default: docs\portfolio\images).
+/// Usage: Screenshots.exe [output folder]. Writes main.png, search.png, edit.png, settings.png and logo.png
+/// (default: docs\portfolio\images).
 /// The windows open on the screen for a few seconds while they are captured.
 /// </summary>
 public static class Program
@@ -99,6 +100,18 @@ public static class Program
         await Settle();
         WindowCapture.Save(Path.Combine(output, "edit.png"), WindowCapture.Capture(edit));
         edit.Close();
+
+        var settingsWindow = new SettingsWindow(settingsStore, settingsStore.Load(), null)
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Left = 620,
+            Top = 60,
+            ShowActivated = false,
+        };
+        settingsWindow.Show();
+        await Settle();
+        WindowCapture.Save(Path.Combine(output, "settings.png"), WindowCapture.Capture(settingsWindow));
+        settingsWindow.Close();
 
         main.PrepareExit();
         main.Close();
