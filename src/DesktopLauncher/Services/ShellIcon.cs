@@ -10,7 +10,6 @@ public static class ShellIcon
 {
     private const uint SHGFI_ICON = 0x000000100;
     private const uint SHGFI_LARGEICON = 0x000000000;
-    private const uint SHGFI_USEFILEATTRIBUTES = 0x000000010;
     private const uint FILE_ATTRIBUTE_NORMAL = 0x00000080;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -34,11 +33,6 @@ public static class ShellIcon
     public static ImageSource? ForPath(string path)
     {
         return Get(path, SHGFI_ICON | SHGFI_LARGEICON);
-    }
-
-    public static ImageSource? ForUrl()
-    {
-        return Get(".url", SHGFI_ICON | SHGFI_LARGEICON | SHGFI_USEFILEATTRIBUTES);
     }
 
     private static ImageSource? Get(string path, uint flags)

@@ -11,6 +11,21 @@
         <StackPanel x:Name="DetailsPanel" Visibility="Collapsed">
             <TextBlock Text="名前" Margin="0,0,0,8" Style="{StaticResource SecondaryText}" />
             <TextBox x:Name="NameBox" AutomationProperties.Name="名前" />
+            <TextBlock Text="アイコン" Margin="0,16,0,8" Style="{StaticResource SecondaryText}" />
+            <StackPanel Orientation="Horizontal">
+                <Border Width="40" Height="40" CornerRadius="6" Background="{StaticResource ControlBrush}"
+                        BorderBrush="{StaticResource LineBrush}" BorderThickness="1" Margin="0,0,12,0">
+                    <Grid>
+                        <Image x:Name="IconPreview" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TextBlock x:Name="IconGlyph" Text="&#xE8B7;" Style="{StaticResource Glyph}" FontSize="18"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Visibility="Collapsed" />
+                    </Grid>
+                </Border>
+                <Button Content="画像を選ぶ…" MinWidth="88" VerticalAlignment="Center" Click="ChooseIcon_Click"
+                        ToolTip="PNG・ICO・JPG などの画像をアイコンにします（画像はアプリのフォルダーにコピーされます）" />
+                <Button x:Name="ResetIconButton" Content="元に戻す" MinWidth="88" Margin="8,0,0,0" VerticalAlignment="Center"
+                        Click="ResetIcon_Click" ToolTip="既定のアイコンに戻します" />
+            </StackPanel>
             <StackPanel x:Name="PathPanel">
                 <TextBlock x:Name="PathLabel" Margin="0,16,0,8" Style="{StaticResource SecondaryText}" />
                 <DockPanel>

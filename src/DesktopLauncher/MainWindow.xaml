@@ -59,9 +59,14 @@
             <Setter Property="Height" Value="20" />
             <Setter Property="RenderOptions.BitmapScalingMode" Value="HighQuality" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                <!-- A group shows the folder glyph unless the user gave it an image. -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsGroup}" Value="True" />
+                        <Condition Binding="{Binding HasCustomIcon}" Value="False" />
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="Visibility" Value="Collapsed" />
-                </DataTrigger>
+                </MultiDataTrigger>
             </Style.Triggers>
         </Style>
 
@@ -71,9 +76,13 @@
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
             <Setter Property="Visibility" Value="Collapsed" />
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsGroup}" Value="True" />
+                        <Condition Binding="{Binding HasCustomIcon}" Value="False" />
+                    </MultiDataTrigger.Conditions>
                     <Setter Property="Visibility" Value="Visible" />
-                </DataTrigger>
+                </MultiDataTrigger>
                 <DataTrigger Binding="{Binding IsExpanded}" Value="True">
                     <Setter Property="Text" Value="&#xE838;" />
                 </DataTrigger>

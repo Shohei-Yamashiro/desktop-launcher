@@ -286,7 +286,7 @@ public partial class MainWindow : Window
         var heading = $"選んだ {nodes.Count} 件に付けるタグ";
         var note = nodes.Any(n => n.IsGroup) ? "グループのタグで絞り込むと、中の項目もすべて表示されます。" : null;
 
-        var dialog = new EditWindow(heading, note, _tree.AllTags(), nodes, _tagColors.BrushFor) { Owner = this };
+        var dialog = new EditWindow(heading, note, _tree.AllTags(), nodes, _tagColors.BrushFor, DefaultIcon) { Owner = this };
         if (WithModal(dialog.ShowDialog) != true) return;
 
         if (nodes is [var single])
@@ -300,11 +300,38 @@ public partial class MainWindow : Window
                 single.Icon = LoadIcon(single);
                 if (_store.IsInLinksDirectory(old) && File.Exists(old)) ShortcutFiles.MoveToRecycleBin(old);
             }
+            ApplyIconChoice(single, dialog.IconChoice, dialog.IconFile);
         }
         foreach (var node in nodes) node.ApplyTagChanges(dialog.AddedTags, dialog.RemovedTags);
         UpdateTagBar();
         if (ShowsList) UpdateSearch();
         Save();
+    }
+
+    /// <summary>Copies a picked image into data\icons (so it stays when the original moves), or goes back to the default.</summary>
+    private void ApplyIconChoice(LauncherItem node, EditWindow.IconChange choice, string? file)
+    {
+        if (choice == EditWindow.IconChange.None) return;
+
+        var old = node.CustomIcon;
+        if (choice == EditWindow.IconChange.File && file is not null)
+        {
+            try
+            {
+                node.CustomIcon = _store.ImportIcon(file);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                ShowError($"アイコンの画像をコピーできませんでした。\n{file}\n\n{ex.Message}");
+                return;
+            }
+        }
+        else
+        {
+            node.CustomIcon = null;
+        }
+        _store.DeleteIcon(old);
+        node.Icon = LoadIcon(node);
     }
 
     // ---- Search ----
@@ -1166,10 +1193,15 @@ public partial class MainWindow : Window
         return Path.GetFileNameWithoutExtension(path);
     }
 
-    private static ImageSource? LoadIcon(LauncherItem item)
+    /// <summary>The image the user chose, or else the default icon.</summary>
+    private static ImageSource? LoadIcon(LauncherItem item) =>
+        item.CustomIcon is { } custom && ItemIcons.LoadImage(custom) is { } image ? image : DefaultIcon(item);
+
+    /// <summary>Shell icon for files and folders, a letter badge for URLs, none for groups (they show a folder glyph).</summary>
+    private static ImageSource? DefaultIcon(LauncherItem item)
     {
         if (item.IsGroup) return null;
-        if (item.IsUrl) return ShellIcon.ForUrl();
+        if (item.IsUrl) return ItemIcons.LetterBadgeFor(item.Path);
         return File.Exists(item.Path) || Directory.Exists(item.Path) ? ShellIcon.ForPath(item.Path) : null;
     }
 
@@ -1252,10 +1284,9 @@ public partial class MainWindow : Window
             if (answer != MessageBoxResult.OK) return;
         }
 
-        var captured = _tree.All()
-            .Where(n => nodes.Any(top => n == top || IsDescendant(n, top)) && !n.IsGroup && _store.IsInLinksDirectory(n.Path))
-            .Select(n => n.Path)
-            .ToList();
+        var removed = _tree.All().Where(n => nodes.Any(top => n == top || IsDescendant(n, top))).ToList();
+        var captured = removed.Where(n => !n.IsGroup && _store.IsInLinksDirectory(n.Path)).Select(n => n.Path).ToList();
+        var icons = removed.Select(n => n.CustomIcon).OfType<string>().ToList();
 
         foreach (var node in nodes) _tree.Remove(node);
         _anchor = null;
@@ -1264,6 +1295,7 @@ public partial class MainWindow : Window
         Save();
 
         foreach (var path in captured.Where(File.Exists)) ShortcutFiles.MoveToRecycleBin(path);
+        foreach (var icon in icons) _store.DeleteIcon(icon);
     }
 
     private void Collapse_Click(object sender, RoutedEventArgs e) => HideLauncher();

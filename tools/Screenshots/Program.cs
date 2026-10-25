@@ -98,6 +98,7 @@ public static class Program
         var loaded = new LauncherTree();
         new ItemStore(dataDirectory).Load(loaded);
         var node = loaded.All().First(n => n.Name == "社内ポータル");
+        node.Icon = ItemIcons.LetterBadgeFor(node.Path);
         var colors = new TagColors(settingsStore.Load().TagColors);
         var edit = new EditWindow("", null, loaded.AllTags(), [node], colors.BrushFor)
         {

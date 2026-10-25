@@ -23,6 +23,7 @@ public sealed class LauncherItem : INotifyPropertyChanged
 {
     private string _name = "";
     private string _path = "";
+    private string? _customIcon;
     private ImageSource? _icon;
     private bool _isExpanded;
     private bool _isFavorite;
@@ -79,6 +80,22 @@ public sealed class LauncherItem : INotifyPropertyChanged
             RefreshDisplayTags();
         }
     }
+
+    /// <summary>An image file the user chose as the icon (kept under data\icons); null for the default icon.</summary>
+    public string? CustomIcon
+    {
+        get => _customIcon;
+        set
+        {
+            if (_customIcon == value) return;
+            _customIcon = value;
+            OnPropertyChanged(nameof(CustomIcon));
+            OnPropertyChanged(nameof(HasCustomIcon));
+        }
+    }
+
+    /// <summary>A group with its own image shows it instead of the folder glyph.</summary>
+    public bool HasCustomIcon => _customIcon is not null;
 
     public ImageSource? Icon
     {
