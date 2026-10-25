@@ -161,8 +161,8 @@
             </Setter>
         </Style>
 
-        <!-- Star at the start of a row; click to toggle. A favorite shows a filled star, other items an outline
-             only while the row is hovered. Groups keep the space empty so that icons stay aligned. -->
+        <!-- Star at the start of a row; click to toggle. A favorite shows a filled star, other items a faint outline
+             that brightens while the row is hovered. Groups keep the space empty so that icons stay aligned. -->
         <Style x:Key="FavoriteStar" TargetType="Button">
             <Setter Property="Tag" Value="star" />
             <Setter Property="Width" Value="18" />
@@ -176,7 +176,7 @@
                     <ControlTemplate TargetType="Button">
                         <Border Background="Transparent">
                             <TextBlock x:Name="Glyph" Text="&#xE734;" Style="{StaticResource Glyph}" FontSize="12"
-                                       Foreground="{StaticResource TextTertiaryBrush}" Opacity="0" />
+                                       Foreground="{StaticResource TextTertiaryBrush}" Opacity="0.45" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=DockPanel}}" Value="True">

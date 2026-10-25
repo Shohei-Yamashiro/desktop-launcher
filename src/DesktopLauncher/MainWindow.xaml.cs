@@ -281,6 +281,7 @@ public partial class MainWindow : Window
         if (nodes is [var single])
         {
             single.Name = dialog.NewName;
+            single.IsFavorite = dialog.IsFavorite;
             if (dialog.NewPath is { } path)
             {
                 var old = single.Path;

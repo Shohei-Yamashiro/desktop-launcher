@@ -18,6 +18,7 @@
                             Click="Browse_Click" />
                     <TextBox x:Name="PathBox" AutomationProperties.Name="{Binding Text, ElementName=PathLabel}" />
                 </DockPanel>
+                <CheckBox x:Name="FavoriteBox" Margin="0,14,0,0" Content="お気に入り（「お気に入り」タブに表示します）" />
             </StackPanel>
             <TextBlock Text="タグ" Margin="0,16,0,0" Style="{StaticResource SecondaryText}" />
         </StackPanel>
