@@ -10,8 +10,8 @@ using DesktopLauncher.Services;
 namespace Screenshots;
 
 /// <summary>
-/// Usage: Screenshots.exe [output folder]. Writes main.png, search.png, favorites.png, frequent.png, edit.png, settings.png
-/// and logo.png
+/// Usage: Screenshots.exe [output folder]. Writes main.png, search.png, favorites.png, frequent.png, edit.png, import.png,
+/// settings.png and logo.png
 /// (default: docs\portfolio\images).
 /// The windows open on the screen for a few seconds while they are captured.
 /// </summary>
@@ -113,7 +113,19 @@ public static class Program
         WindowCapture.Save(Path.Combine(output, "edit.png"), WindowCapture.Capture(edit));
         edit.Close();
 
-        var settingsWindow = new SettingsWindow(settingsStore, settingsStore.Load(), null)
+        var import = new ImportBookmarksWindow([new BookmarkSource("Microsoft Edge", "個人", SampleData.WriteBookmarks(AppContext.BaseDirectory))])
+        {
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Left = 620,
+            Top = 60,
+            ShowActivated = false,
+        };
+        import.Show();
+        await Settle();
+        WindowCapture.Save(Path.Combine(output, "import.png"), WindowCapture.Capture(import));
+        import.Close();
+
+        var settingsWindow = new SettingsWindow(settingsStore, settingsStore.Load(), null, _ => { })
         {
             WindowStartupLocation = WindowStartupLocation.Manual,
             Left = 620,

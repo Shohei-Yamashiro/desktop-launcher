@@ -12,15 +12,18 @@ public partial class SettingsWindow : Window
     private readonly SettingsStore _store;
     private readonly AppSettings _settings;
     private readonly HotKey? _hotKey;
+    private readonly Action<Window>? _importBookmarks;
     private HotKeyGesture _gesture;
 
-    public SettingsWindow(SettingsStore store, AppSettings settings, HotKey? hotKey)
+    public SettingsWindow(SettingsStore store, AppSettings settings, HotKey? hotKey, Action<Window>? importBookmarks = null)
     {
         InitializeComponent();
         DarkFrame.Apply(this);
         _store = store;
         _settings = settings;
         _hotKey = hotKey;
+        _importBookmarks = importBookmarks;
+        ImportBookmarksButton.IsEnabled = importBookmarks is not null;
         _gesture = hotKey?.Gesture ?? HotKeyGesture.Parse(settings.HotKey) ?? HotKeyGesture.Default;
         HotKeyBox.Text = _gesture.DisplayText;
         HotKeyNote.Text = HotKeyHint;
@@ -80,6 +83,8 @@ public partial class SettingsWindow : Window
     {
         if (Keyboard.Modifiers == ModifierKeys.None) HotKeyBox.Text = _gesture.DisplayText;
     }
+
+    private void ImportBookmarks_Click(object sender, RoutedEventArgs e) => _importBookmarks?.Invoke(this);
 
     private void ResetHotKey_Click(object sender, RoutedEventArgs e)
     {
