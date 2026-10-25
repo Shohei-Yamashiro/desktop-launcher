@@ -22,9 +22,11 @@ public partial class MiniWindow : Window
         _settingsStore = settingsStore;
         _settings = settings;
         IconImage.Source = LoadLargestIconFrame();
-        ToolTip = $"#Hashelf（{hotKeyText}）\nクリックで開く・ドラッグで移動";
+        SetHotKeyText(hotKeyText);
         PlaceInitially();
     }
+
+    public void SetHotKeyText(string hotKeyText) => ToolTip = $"#Hashelf（{hotKeyText}）\nクリックで開く・ドラッグで移動";
 
     public Rect Bounds => new(Left, Top, Width, Height);
 

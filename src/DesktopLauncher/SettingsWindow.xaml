@@ -29,6 +29,18 @@
 
         <Border Height="1" Margin="0,16" Background="{StaticResource LineBrush}" />
 
+        <DockPanel>
+            <Button DockPanel.Dock="Right" Content="初期値に戻す" Margin="8,0,0,0" Click="ResetHotKey_Click"
+                    ToolTip="呼び出すキーを Ctrl+Alt+Space に戻します" />
+            <TextBox x:Name="HotKeyBox" DockPanel.Dock="Right" Width="170" IsReadOnly="True" IsReadOnlyCaretVisible="False"
+                     TextAlignment="Center" InputMethod.IsInputMethodEnabled="False" AutomationProperties.Name="呼び出すキー"
+                     PreviewKeyDown="HotKeyBox_PreviewKeyDown" PreviewKeyUp="HotKeyBox_PreviewKeyUp" />
+            <TextBlock Text="呼び出すキー" VerticalAlignment="Center" />
+        </DockPanel>
+        <TextBlock x:Name="HotKeyNote" Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12" LineHeight="19" Style="{StaticResource SecondaryText}" />
+
+        <Border Height="1" Margin="0,16" Background="{StaticResource LineBrush}" />
+
         <CheckBox x:Name="StartupBox" Content="Windows 起動時に開始" />
         <TextBlock Margin="26,6,0,0" TextWrapping="Wrap" FontSize="12" LineHeight="19" Style="{StaticResource SecondaryText}"
                    Text="オンにすると、Windows のスタートアップ（レジストリの HKCU\…\Run）に登録します。" />

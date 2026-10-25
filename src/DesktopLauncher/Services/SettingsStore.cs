@@ -16,6 +16,9 @@ public sealed class AppSettings
 
     public RowSpacing RowSpacing { get; set; } = RowSpacing.Normal;
 
+    /// <summary>The hotkey that opens the launcher, such as "Ctrl+Alt+Space"; null for the default.</summary>
+    public string? HotKey { get; set; }
+
     /// <summary>Palette index per tag name.</summary>
     public Dictionary<string, int> TagColors { get; set; } = [];
 }

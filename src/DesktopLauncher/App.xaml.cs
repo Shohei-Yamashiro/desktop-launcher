@@ -1,5 +1,5 @@
 ﻿using System.Windows;
-using System.Windows.Input;
+using DesktopLauncher.Models;
 using DesktopLauncher.Services;
 
 namespace DesktopLauncher;
@@ -44,8 +44,9 @@ public partial class App : Application
         MainWindow = _window;
         _window.ClosedToTray += OnClosedToTray;
 
-        _hotKey = new HotKey(_window, ModifierKeys.Control | ModifierKeys.Alt, Key.Space);
+        _hotKey = new HotKey(_window, HotKeyGesture.Parse(settings.HotKey) ?? HotKeyGesture.Default);
         _hotKey.Pressed += _window.ToggleLauncher;
+        _window.HotKey = _hotKey;
 
         _tray = new TrayIcon(_hotKey.DisplayText, _window.ShowLauncher, ExitApp);
         _instance.ShowRequested += () => Dispatcher.BeginInvoke(_window.ShowLauncher);
@@ -54,6 +55,11 @@ public partial class App : Application
         _mini.OpenRequested += _window.ShowLauncher;
         _mini.ExitRequested += ExitApp;
         _window.Anchor = () => _mini.Bounds;
+        _hotKey.Changed += () =>
+        {
+            _tray.SetHotKeyText(_hotKey.DisplayText);
+            _mini.SetHotKeyText(_hotKey.DisplayText);
+        };
         _window.IsVisibleChanged += (_, _) =>
         {
             if (_window.IsVisible) _mini.Hide();
@@ -62,7 +68,7 @@ public partial class App : Application
 
         if (!_hotKey.Register())
         {
-            _tray.ShowBalloon($"{_hotKey.DisplayText} は他のアプリで使われているため登録できませんでした。トレイのアイコンから呼び出してください。",
+            _tray.ShowBalloon($"{_hotKey.DisplayText} は他のアプリで使われているため登録できませんでした。トレイのアイコンから呼び出し、設定で別のキーを選んでください。",
                 System.Windows.Forms.ToolTipIcon.Warning);
         }
 

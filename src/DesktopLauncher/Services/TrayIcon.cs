@@ -8,10 +8,11 @@ public sealed class TrayIcon : IDisposable
     private const string AppName = "#Hashelf";
 
     private readonly NotifyIcon _icon;
+    private readonly ToolStripMenuItem _showItem;
 
     public TrayIcon(string hotKeyText, Action show, Action exit)
     {
-        var showItem = new ToolStripMenuItem("表示", null, (_, _) => show())
+        _showItem = new ToolStripMenuItem("表示", null, (_, _) => show())
         {
             ShortcutKeyDisplayString = hotKeyText,
             Font = new Font(SystemFonts.MenuFont ?? Control.DefaultFont, System.Drawing.FontStyle.Bold),
@@ -20,7 +21,7 @@ public sealed class TrayIcon : IDisposable
         var exitItem = new ToolStripMenuItem("終了", null, (_, _) => exit());
 
         var menu = new ContextMenuStrip();
-        menu.Items.AddRange([showItem, startupItem, new ToolStripSeparator(), exitItem]);
+        menu.Items.AddRange([_showItem, startupItem, new ToolStripSeparator(), exitItem]);
         menu.Opening += (_, _) => startupItem.Checked = StartupRegistration.IsEnabled;
 
         _icon = new NotifyIcon
@@ -34,6 +35,12 @@ public sealed class TrayIcon : IDisposable
         {
             if (e.Button == MouseButtons.Left) show();
         };
+    }
+
+    public void SetHotKeyText(string hotKeyText)
+    {
+        _showItem.ShortcutKeyDisplayString = hotKeyText;
+        _icon.Text = $"{AppName}（{hotKeyText}）";
     }
 
     public void ShowBalloon(string text, ToolTipIcon icon = ToolTipIcon.Info) =>

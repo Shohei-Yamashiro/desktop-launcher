@@ -58,6 +58,9 @@ public partial class MainWindow : Window
     /// <summary>Screen rectangle the window opens from (the mini icon).</summary>
     public Func<Rect>? Anchor { get; set; }
 
+    /// <summary>The hotkey that toggles this window, changed from the settings.</summary>
+    public HotKey? HotKey { get; set; }
+
     public void ShowLauncher()
     {
         if (!IsVisible && Anchor is not null) PlaceNearAnchor(Anchor());
@@ -1156,7 +1159,7 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new SettingsWindow(_settingsStore, _settings) { Owner = this };
+        var dialog = new SettingsWindow(_settingsStore, _settings, HotKey) { Owner = this };
         if (WithModal(dialog.ShowDialog) == true) ApplyRowSpacing();
     }
 
