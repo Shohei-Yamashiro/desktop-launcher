@@ -92,6 +92,9 @@ public partial class EditWindow : Window
     /// <summary>The new path or URL for a single item; null when unchanged.</summary>
     public string? NewPath { get; private set; }
 
+    /// <summary>Whether a single item is a favorite (always false for a group).</summary>
+    public bool IsFavorite => _kind != EditKind.Group && FavoriteBox.IsChecked == true;
+
     /// <summary>Tags to add to every node.</summary>
     public IReadOnlyList<string> AddedTags { get; private set; } = [];
 
@@ -150,6 +153,7 @@ public partial class EditWindow : Window
             _ => "ファイルの場所",
         };
         if (_kind != EditKind.Group) PathBox.Text = node.Path;
+        FavoriteBox.IsChecked = node.IsFavorite;
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)

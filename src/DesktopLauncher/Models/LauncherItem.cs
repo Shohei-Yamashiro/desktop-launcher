@@ -25,6 +25,7 @@ public sealed class LauncherItem : INotifyPropertyChanged
     private string _path = "";
     private ImageSource? _icon;
     private bool _isExpanded;
+    private bool _isFavorite;
     private bool _isSelected;
     private bool _isCurrent;
     private DropPosition _dropPosition;
@@ -87,6 +88,17 @@ public sealed class LauncherItem : INotifyPropertyChanged
     {
         get => _isExpanded;
         set => SetField(ref _isExpanded, value);
+    }
+
+    /// <summary>Listed on the お気に入り tab. Only items (not groups) can be favorites.</summary>
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        set
+        {
+            if (IsGroup && value) throw new InvalidOperationException("A group cannot be a favorite.");
+            SetField(ref _isFavorite, value);
+        }
     }
 
     /// <summary>Part of the (multi-)selection that commands act on.</summary>

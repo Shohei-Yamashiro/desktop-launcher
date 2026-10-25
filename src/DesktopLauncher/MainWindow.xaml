@@ -129,6 +129,78 @@
         </Style>
 
         <controls:TagBrushConverter x:Key="TagBrush" />
+        <SolidColorBrush x:Key="FavoriteBrush" Color="#E3B860" />
+
+        <!-- 「すべて」「お気に入り」… above the search box; the chosen one is bright and underlined. -->
+        <Style x:Key="ViewTab" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Margin" Value="0,0,2,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd" Background="Transparent" CornerRadius="6" Padding="10,5,10,0">
+                            <StackPanel>
+                                <ContentPresenter HorizontalAlignment="Center" />
+                                <Border x:Name="Line" Height="2" CornerRadius="1" Margin="0,5,0,0" Background="Transparent" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{StaticResource ControlHoverBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Line" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Star at the start of a row; click to toggle. A favorite shows a filled star, other items a faint outline
+             that brightens while the row is hovered. Groups keep the space empty so that icons stay aligned. -->
+        <Style x:Key="FavoriteStar" TargetType="Button">
+            <Setter Property="Tag" Value="star" />
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="ToolTip" Value="お気に入りに追加（Ctrl+D）" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent">
+                            <TextBlock x:Name="Glyph" Text="&#xE734;" Style="{StaticResource Glyph}" FontSize="12"
+                                       Foreground="{StaticResource TextTertiaryBrush}" Opacity="0.45" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=DockPanel}}" Value="True">
+                                <Setter TargetName="Glyph" Property="Opacity" Value="1" />
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                <Setter TargetName="Glyph" Property="Text" Value="&#xE735;" />
+                                <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource FavoriteBrush}" />
+                                <Setter TargetName="Glyph" Property="Opacity" Value="1" />
+                                <Setter Property="ToolTip" Value="お気に入りから外す（Ctrl+D）" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter Property="Visibility" Value="Hidden" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
 
         <!-- Name followed by the node's tags; tags that do not fit end in "…".
              Own tags are tinted with the tag color; inherited tags (from enclosing groups) only get
@@ -219,6 +291,22 @@
             <Border DockPanel.Dock="Top" Background="{StaticResource HeaderBrush}" BorderBrush="{StaticResource LineBrush}"
                     BorderThickness="0,0,0,1" Padding="12,2,12,8">
                 <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="-4,0,0,8">
+                        <RadioButton x:Name="AllTab" Style="{StaticResource ViewTab}" GroupName="View" IsChecked="True"
+                                     Checked="ViewTab_Checked" AutomationProperties.Name="すべて" ToolTip="グループとタグで整理した、すべての項目">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE8FD;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,6,0" />
+                                <TextBlock Text="すべて" />
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton x:Name="FavoritesTab" Style="{StaticResource ViewTab}" GroupName="View"
+                                     Checked="ViewTab_Checked" AutomationProperties.Name="お気に入り" ToolTip="お気に入りにした項目（Ctrl+D で追加・解除）">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE735;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,6,0" />
+                                <TextBlock Text="お気に入り" />
+                            </StackPanel>
+                        </RadioButton>
+                    </StackPanel>
                     <Grid>
                         <TextBox x:Name="SearchBox" Padding="32,7,8,7" AutomationProperties.Name="検索"
                                  TextChanged="SearchBox_TextChanged" PreviewKeyDown="SearchBox_PreviewKeyDown"
@@ -363,6 +451,7 @@
                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                             <Border Tag="row" Style="{StaticResource RowStyle}">
                                 <DockPanel>
+                                    <Button Style="{StaticResource FavoriteStar}" Click="FavoriteStar_Click" />
                                     <Grid Width="20" Height="20" Margin="0,0,10,0">
                                         <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" />
                                         <TextBlock Style="{StaticResource GroupGlyph}" />
@@ -396,6 +485,7 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <DockPanel>
+                                <Button Style="{StaticResource FavoriteStar}" Click="FavoriteStar_Click" />
                                 <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" Margin="0,0,10,0" />
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Location}" Style="{StaticResource MetaText}"
                                            Margin="12,0,0,0" />
