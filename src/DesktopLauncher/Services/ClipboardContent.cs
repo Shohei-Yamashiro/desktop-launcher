@@ -24,7 +24,7 @@ public static class ClipboardContent
     {
         try
         {
-            return Clipboard.ContainsText() && WebUrl.TryNormalize(Clipboard.GetText(), out var url) ? url : null;
+            return Clipboard.ContainsText() && WebUrl.TryParseCopied(Clipboard.GetText(), out var url) ? url : null;
         }
         catch (COMException)
         {

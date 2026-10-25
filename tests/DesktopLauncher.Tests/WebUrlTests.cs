@@ -37,6 +37,28 @@ public class WebUrlTests
     }
 
     [Theory]
+    [InlineData("https://example.com/docs", "https://example.com/docs")]
+    [InlineData("  http://localhost:8080/app  ", "http://localhost:8080/app")]
+    public void TryParseCopied_AcceptsUrlsWithScheme(string text, string expected)
+    {
+        Assert.True(WebUrl.TryParseCopied(text, out var url));
+        Assert.Equal(expected, url);
+    }
+
+    [Theory]
+    [InlineData("imap.gmail.com")]
+    [InlineData("example.com/docs")]
+    [InlineData("ftp://example.com")]
+    [InlineData("https://memo")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void TryParseCopied_NeedsHttpOrHttps(string? text)
+    {
+        Assert.False(WebUrl.TryParseCopied(text, out var url));
+        Assert.Equal("", url);
+    }
+
+    [Theory]
     [InlineData("https://example.com", true)]
     [InlineData("http://example.com", true)]
     [InlineData("example.com", false)]
