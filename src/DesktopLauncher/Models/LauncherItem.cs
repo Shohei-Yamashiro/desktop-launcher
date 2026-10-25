@@ -26,6 +26,8 @@ public sealed class LauncherItem : INotifyPropertyChanged
     private ImageSource? _icon;
     private bool _isExpanded;
     private bool _isFavorite;
+    private int _launchCount;
+    private DateTime? _lastLaunched;
     private bool _isSelected;
     private bool _isCurrent;
     private DropPosition _dropPosition;
@@ -89,6 +91,35 @@ public sealed class LauncherItem : INotifyPropertyChanged
         get => _isExpanded;
         set => SetField(ref _isExpanded, value);
     }
+
+    /// <summary>How many times the item was opened; ranks the よく使う tab together with <see cref="LastLaunched"/>.</summary>
+    public int LaunchCount
+    {
+        get => _launchCount;
+        private set => SetField(ref _launchCount, value);
+    }
+
+    public DateTime? LastLaunched
+    {
+        get => _lastLaunched;
+        private set => SetField(ref _lastLaunched, value);
+    }
+
+    public void RecordLaunch(DateTime when)
+    {
+        if (IsGroup) throw new InvalidOperationException("A group cannot be opened.");
+        LaunchCount++;
+        LastLaunched = when;
+    }
+
+    /// <summary>Sets the history as loaded from the saved data.</summary>
+    public void RestoreLaunches(int count, DateTime? last)
+    {
+        LaunchCount = Math.Max(0, count);
+        LastLaunched = LaunchCount > 0 ? last : null;
+    }
+
+    public void ClearLaunches() => RestoreLaunches(0, null);
 
     /// <summary>Listed on the お気に入り tab. Only items (not groups) can be favorites.</summary>
     public bool IsFavorite

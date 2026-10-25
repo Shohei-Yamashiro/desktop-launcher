@@ -306,6 +306,13 @@
                                 <TextBlock Text="お気に入り" />
                             </StackPanel>
                         </RadioButton>
+                        <RadioButton x:Name="FrequentTab" Style="{StaticResource ViewTab}" GroupName="View"
+                                     Checked="ViewTab_Checked" AutomationProperties.Name="よく使う" ToolTip="よく開く項目（開いた回数と新しさの順）">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE81C;" Style="{StaticResource Glyph}" FontSize="12" Margin="0,0,6,0" />
+                                <TextBlock Text="よく使う" />
+                            </StackPanel>
+                        </RadioButton>
                     </StackPanel>
                     <Grid>
                         <TextBox x:Name="SearchBox" Padding="32,7,8,7" AutomationProperties.Name="検索"

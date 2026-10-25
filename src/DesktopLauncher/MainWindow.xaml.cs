@@ -17,6 +17,7 @@ public enum LauncherView
 {
     All,
     Favorites,
+    Frequent,
 }
 
 public partial class MainWindow : Window
@@ -245,16 +246,26 @@ public partial class MainWindow : Window
     {
         // Raised while the XAML is still loading, before the lists exist.
         if (SearchList is null) return;
-        _view = FavoritesTab.IsChecked == true ? LauncherView.Favorites : LauncherView.All;
+        _view = FavoritesTab.IsChecked == true ? LauncherView.Favorites
+            : FrequentTab.IsChecked == true ? LauncherView.Frequent
+            : LauncherView.All;
         UpdateSearch();
     }
 
     /// <summary>Ctrl+Tab and Ctrl+Shift+Tab move between the tabs.</summary>
     private void SwitchTab(bool backward)
     {
-        RadioButton[] tabs = [AllTab, FavoritesTab];
+        RadioButton[] tabs = [AllTab, FavoritesTab, FrequentTab];
         var index = Array.FindIndex(tabs, t => t.IsChecked == true);
         tabs[(index + (backward ? tabs.Length - 1 : 1)) % tabs.Length].IsChecked = true;
+    }
+
+    /// <summary>Forgets how often the items were opened, which takes them off the よく使う tab.</summary>
+    private void ClearLaunches(IReadOnlyList<LauncherItem> nodes)
+    {
+        foreach (var item in nodes.Where(n => !n.IsGroup)) item.ClearLaunches();
+        if (_view == LauncherView.Frequent) UpdateSearch();
+        Save();
     }
 
     /// <summary>Adds the items to the favorites, or removes them when all of them already are.</summary>
@@ -427,9 +438,13 @@ public partial class MainWindow : Window
         }
         else
         {
-            var results = _tree.FindItems(SearchBox.Text, _activeTag)
-                .Where(n => _view != LauncherView.Favorites || n.IsFavorite)
-                .ToList();
+            var matches = _tree.FindItems(SearchBox.Text, _activeTag);
+            var results = _view switch
+            {
+                LauncherView.Favorites => matches.Where(n => n.IsFavorite).ToList(),
+                LauncherView.Frequent => FrequentItems.Rank(matches, DateTime.Now).ToList(),
+                _ => matches.ToList(),
+            };
             SearchList.ItemsSource = results;
             SearchList.SelectedIndex = -1;
             SearchList.Visibility = Visibility.Visible;
@@ -447,9 +462,14 @@ public partial class MainWindow : Window
         }
         else if (ShowsList && SearchList.Items.Count == 0)
         {
-            EmptyText.Text = _view == LauncherView.Favorites && !IsFiltering
-                ? "お気に入りはまだありません。\n項目を右クリックして「お気に入りに追加」を選ぶか、Ctrl+D を押すと、ここに表示されます。"
-                : "一致する項目がありません。";
+            EmptyText.Text = (_view, IsFiltering) switch
+            {
+                (LauncherView.Favorites, false) =>
+                    "お気に入りはまだありません。\n行の先頭の ☆ をクリックするか、Ctrl+D を押すと、ここに表示されます。",
+                (LauncherView.Frequent, false) =>
+                    "よく使う項目はまだありません。\n項目を開くと、開いた回数と新しさの順にここに並びます。",
+                _ => "一致する項目がありません。",
+            };
             EmptyText.Visibility = Visibility.Visible;
         }
         else
@@ -881,6 +901,7 @@ public partial class MainWindow : Window
             menu.Items.Add(MenuItem("開く", () => Launch(node), bold: true));
             menu.Items.Add(MenuItem("ファイルの場所を開く", () => OpenLocation(node)));
             menu.Items.Add(MenuItem(node.IsFavorite ? "お気に入りから外す" : "お気に入りに追加", () => ToggleFavorite([node]), gesture: "Ctrl+D"));
+            if (node.LaunchCount > 0) menu.Items.Add(MenuItem("よく使うから外す", () => ClearLaunches([node])));
         }
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("編集…", () => Edit([node]), gesture: "F2"));
@@ -906,6 +927,7 @@ public partial class MainWindow : Window
         {
             menu.Items.Add(MenuItem(items.All(n => n.IsFavorite) ? "お気に入りから外す" : "お気に入りに追加",
                 () => ToggleFavorite(nodes), gesture: "Ctrl+D"));
+            if (items.Any(n => n.LaunchCount > 0)) menu.Items.Add(MenuItem("よく使うから外す", () => ClearLaunches(nodes)));
         }
         menu.Items.Add(BuildMoveMenu(nodes));
         menu.Items.Add(new Separator());
@@ -1167,6 +1189,7 @@ public partial class MainWindow : Window
         try
         {
             Process.Start(startInfo);
+            item.RecordLaunch(DateTime.Now);
             HideLauncher();
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
