@@ -84,6 +84,7 @@ public sealed class ItemStore
             var item = LauncherItem.CreateItem(dto.Name ?? dto.Path, ToAbsolute(dto.Path));
             if (dto.Tags is not null) item.SetTags(dto.Tags);
             item.IsFavorite = dto.Favorite == true;
+            item.RestoreLaunches(dto.LaunchCount ?? 0, dto.LastLaunched);
             tree.Insert(item, parent);
         }
     }
@@ -93,7 +94,15 @@ public sealed class ItemStore
         var tags = node.Tags.Count > 0 ? node.Tags.ToList() : null;
         return node.IsGroup
             ? new NodeDto { Name = node.Name, Expanded = node.IsExpanded, Tags = tags, Children = node.Children.Select(ToDto).ToList() }
-            : new NodeDto { Name = node.Name, Path = ToStored(node.Path), Tags = tags, Favorite = node.IsFavorite ? true : null };
+            : new NodeDto
+            {
+                Name = node.Name,
+                Path = ToStored(node.Path),
+                Tags = tags,
+                Favorite = node.IsFavorite ? true : null,
+                LaunchCount = node.LaunchCount > 0 ? node.LaunchCount : null,
+                LastLaunched = node.LaunchCount > 0 ? node.LastLaunched : null,
+            };
     }
 
     private string ToStored(string path)
@@ -124,5 +133,9 @@ public sealed class ItemStore
         public List<string>? Tags { get; set; }
 
         public bool? Favorite { get; set; }
+
+        public int? LaunchCount { get; set; }
+
+        public DateTime? LastLaunched { get; set; }
     }
 }

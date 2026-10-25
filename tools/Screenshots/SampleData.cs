@@ -42,14 +42,14 @@ public static class SampleData
                 Item("議事録", Folder("議事録"), "会議"),
                 Group("営業資料", ["営業"],
                     Item("提案書メモ", File("提案書メモ.txt")),
-                    Item("顧客リスト", File("顧客リスト.csv"), "毎日"),
-                    Favorite(Item("社内ポータル", "https://portal.example.com/", "毎日")))),
+                    Opened(Item("顧客リスト", File("顧客リスト.csv"), "毎日"), 5, 3),
+                    Opened(Favorite(Item("社内ポータル", "https://portal.example.com/", "毎日")), 20, 60))),
             Group("ツール", ["ツール"],
-                Favorite(Item("メモ帳", Path.Combine(system, "notepad.exe"), "毎日")),
-                Item("電卓", Path.Combine(system, "calc.exe")),
+                Opened(Favorite(Item("メモ帳", Path.Combine(system, "notepad.exe"), "毎日")), 12, 0),
+                Opened(Item("電卓", Path.Combine(system, "calc.exe")), 2, 0),
                 Item("エクスプローラー", Path.Combine(windows, "explorer.exe"))),
             Group("リンク", ["Web"],
-                Favorite(Item("勤怠システム", "https://kintai.example.com/", "毎日")),
+                Opened(Favorite(Item("勤怠システム", "https://kintai.example.com/", "毎日")), 8, 1),
                 Item("経費精算", "https://keihi.example.com/", "経理")),
             Item("週報テンプレート", File("週報テンプレート.txt"), "会議"),
         };
@@ -76,6 +76,13 @@ public static class SampleData
         return item;
     }
 
+    private static Node Opened(Node item, int count, int daysAgo)
+    {
+        item.LaunchCount = count;
+        item.LastLaunched = DateTime.Now.AddDays(-daysAgo);
+        return item;
+    }
+
     /// <summary>Same shape as the app's items.json.</summary>
     private sealed class Node
     {
@@ -90,5 +97,9 @@ public static class SampleData
         public List<string>? Tags { get; set; }
 
         public bool? Favorite { get; set; }
+
+        public int? LaunchCount { get; set; }
+
+        public DateTime? LastLaunched { get; set; }
     }
 }

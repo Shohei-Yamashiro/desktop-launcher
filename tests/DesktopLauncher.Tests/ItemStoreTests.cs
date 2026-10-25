@@ -62,6 +62,28 @@ public sealed class ItemStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveThenLoad_KeepsLaunchHistory()
+    {
+        var store = new ItemStore(_dir);
+        var tree = new LauncherTree();
+        var memo = LauncherItem.CreateItem("メモ帳", @"C:\Windows\notepad.exe");
+        var calc = LauncherItem.CreateItem("電卓", @"C:\Windows\System32\calc.exe");
+        var when = new DateTime(2026, 10, 25, 9, 30, 0);
+        memo.RestoreLaunches(3, when);
+        tree.Insert(memo, null);
+        tree.Insert(calc, null);
+
+        store.Save(tree);
+        var loaded = new LauncherTree();
+        store.Load(loaded);
+
+        Assert.Equal(3, loaded.Roots[0].LaunchCount);
+        Assert.Equal(when, loaded.Roots[0].LastLaunched);
+        Assert.Equal(0, loaded.Roots[1].LaunchCount);
+        Assert.Null(loaded.Roots[1].LastLaunched);
+    }
+
+    [Fact]
     public void Favorite_IsOnlyForItems()
     {
         var group = LauncherItem.CreateGroup("仕事");
