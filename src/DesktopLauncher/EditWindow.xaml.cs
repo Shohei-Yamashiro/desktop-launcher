@@ -25,17 +25,27 @@ public partial class EditWindow : Window
         Url,
     }
 
+    /// <summary>What happens to a single node's icon when OK is pressed.</summary>
+    public enum IconChange
+    {
+        None,
+        Reset,
+        File,
+    }
+
     private readonly ObservableCollection<TagOption> _options;
     private readonly Func<string, Brush> _brushFor;
+    private readonly Func<LauncherItem, ImageSource?>? _defaultIcon;
     private readonly LauncherItem? _single;
     private readonly EditKind _kind;
 
     public EditWindow(string heading, string? note, IEnumerable<string> allTags, IReadOnlyList<LauncherItem> nodes,
-        Func<string, Brush> brushFor)
+        Func<string, Brush> brushFor, Func<LauncherItem, ImageSource?>? defaultIcon = null)
     {
         InitializeComponent();
         DarkFrame.Apply(this);
         _brushFor = brushFor;
+        _defaultIcon = defaultIcon;
         if (nodes is [var single])
         {
             _single = single;
@@ -91,6 +101,11 @@ public partial class EditWindow : Window
 
     /// <summary>The new path or URL for a single item; null when unchanged.</summary>
     public string? NewPath { get; private set; }
+
+    public IconChange IconChoice { get; private set; } = IconChange.None;
+
+    /// <summary>The image picked when <see cref="IconChoice"/> is <see cref="IconChange.File"/>.</summary>
+    public string? IconFile { get; private set; }
 
     /// <summary>Whether a single item is a favorite (always false for a group).</summary>
     public bool IsFavorite => _kind != EditKind.Group && FavoriteBox.IsChecked == true;
@@ -154,6 +169,45 @@ public partial class EditWindow : Window
         };
         if (_kind != EditKind.Group) PathBox.Text = node.Path;
         FavoriteBox.IsChecked = node.IsFavorite;
+        ShowIcon(node.Icon);
+        ResetIconButton.IsEnabled = node.HasCustomIcon;
+    }
+
+    /// <summary>Shows the icon in the preview; a group without an image shows the folder glyph.</summary>
+    private void ShowIcon(ImageSource? icon)
+    {
+        IconPreview.Source = icon;
+        IconGlyph.Visibility = icon is null && _kind == EditKind.Group ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ChooseIcon_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "アイコンにする画像を選択",
+            Filter = "画像ファイル (*.png;*.ico;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.ico;*.jpg;*.jpeg;*.bmp;*.gif|すべてのファイル (*.*)|*.*",
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        if (ItemIcons.LoadImage(dialog.FileName) is not { } image)
+        {
+            MessageBox.Show(this, "この画像は読み込めませんでした。PNG・ICO・JPG などの画像を選んでください。", Title,
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        IconChoice = IconChange.File;
+        IconFile = dialog.FileName;
+        ShowIcon(image);
+        ResetIconButton.IsEnabled = true;
+    }
+
+    private void ResetIcon_Click(object sender, RoutedEventArgs e)
+    {
+        if (_single is null) return;
+        IconChoice = _single.HasCustomIcon ? IconChange.Reset : IconChange.None;
+        IconFile = null;
+        ShowIcon(_defaultIcon?.Invoke(_single));
+        ResetIconButton.IsEnabled = false;
     }
 
     private void Browse_Click(object sender, RoutedEventArgs e)

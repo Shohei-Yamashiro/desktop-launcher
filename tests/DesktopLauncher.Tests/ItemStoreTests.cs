@@ -84,6 +84,43 @@ public sealed class ItemStoreTests : IDisposable
     }
 
     [Fact]
+    public void Icons_AreCopiedIntoTheDataFolderAndKeptRelative()
+    {
+        var store = new ItemStore(_dir);
+        Directory.CreateDirectory(_dir);
+        var source = Path.Combine(_dir, "..", Guid.NewGuid().ToString("N") + ".PNG");
+        File.WriteAllBytes(source, [1, 2, 3]);
+        try
+        {
+            var copy = store.ImportIcon(source);
+            Assert.StartsWith(store.IconsDirectory, copy);
+            Assert.EndsWith(".png", copy);
+
+            var tree = new LauncherTree();
+            var group = LauncherItem.CreateGroup("仕事");
+            group.CustomIcon = copy;
+            tree.Insert(group, null);
+            store.Save(tree);
+            // Saved relative to the app folder (here the test folder's parent), like the shortcuts under data\links.
+            Assert.Contains($"\"Icon\": \"{Path.GetFileName(_dir)}\\\\icons\\\\", File.ReadAllText(store.FilePath));
+
+            var loaded = new LauncherTree();
+            store.Load(loaded);
+            Assert.Equal(copy, loaded.Roots[0].CustomIcon);
+            Assert.True(loaded.Roots[0].HasCustomIcon);
+
+            store.DeleteIcon(copy);
+            Assert.False(File.Exists(copy));
+            store.DeleteIcon(source);
+            Assert.True(File.Exists(source), "Images outside data\\icons are never deleted.");
+        }
+        finally
+        {
+            File.Delete(source);
+        }
+    }
+
+    [Fact]
     public void Favorite_IsOnlyForItems()
     {
         var group = LauncherItem.CreateGroup("仕事");

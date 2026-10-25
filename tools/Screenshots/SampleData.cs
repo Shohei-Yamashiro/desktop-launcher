@@ -51,7 +51,7 @@ public static class SampleData
             Group("リンク", ["Web"],
                 Opened(Favorite(Item("勤怠システム", "https://kintai.example.com/", "毎日")), 8, 1),
                 Item("経費精算", "https://keihi.example.com/", "経理")),
-            Item("週報テンプレート", File("週報テンプレート.txt"), "会議"),
+            WithIcon(Item("週報テンプレート", File("週報テンプレート.txt"), "会議"), WriteSampleIcon(dataDirectory)),
         };
 
         var options = new JsonSerializerOptions
@@ -106,6 +106,37 @@ public static class SampleData
         return item;
     }
 
+    private static Node WithIcon(Node item, string icon)
+    {
+        item.Icon = icon;
+        return item;
+    }
+
+    /// <summary>A small picture (a calendar page with "週") standing in for an image the user picked.</summary>
+    private static string WriteSampleIcon(string dataDirectory)
+    {
+        var icons = Path.Combine(dataDirectory, "icons");
+        Directory.CreateDirectory(icons);
+        var visual = new System.Windows.Media.DrawingVisual();
+        using (var dc = visual.RenderOpen())
+        {
+            var orange = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xE8, 0x8A, 0x4C));
+            dc.DrawRoundedRectangle(System.Windows.Media.Brushes.White, null, new System.Windows.Rect(4, 8, 56, 52), 8, 8);
+            dc.DrawRoundedRectangle(orange, null, new System.Windows.Rect(4, 8, 56, 16), 8, 8);
+            dc.DrawRectangle(orange, null, new System.Windows.Rect(4, 16, 56, 8));
+            var text = new System.Windows.Media.FormattedText("週", System.Globalization.CultureInfo.GetCultureInfo("ja-JP"),
+                System.Windows.FlowDirection.LeftToRight, new System.Windows.Media.Typeface("Yu Gothic UI"), 26,
+                System.Windows.Media.Brushes.DimGray, 1.0);
+            dc.DrawText(text, new System.Windows.Point(32 - text.Width / 2, 26));
+        }
+        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap(64, 64, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
+        using (var stream = System.IO.File.Create(Path.Combine(icons, "sample-weekly.png"))) encoder.Save(stream);
+        return Path.Combine("data", "icons", "sample-weekly.png");
+    }
+
     private static Node Opened(Node item, int count, int daysAgo)
     {
         item.LaunchCount = count;
@@ -125,6 +156,8 @@ public static class SampleData
         public List<Node>? Children { get; set; }
 
         public List<string>? Tags { get; set; }
+
+        public string? Icon { get; set; }
 
         public bool? Favorite { get; set; }
 

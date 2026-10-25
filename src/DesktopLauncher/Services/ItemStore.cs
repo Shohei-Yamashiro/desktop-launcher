@@ -25,6 +25,35 @@ public sealed class ItemStore
         AppDirectory = Path.GetDirectoryName(DataDirectory) ?? DataDirectory;
         FilePath = Path.Combine(DataDirectory, "items.json");
         LinksDirectory = Path.Combine(DataDirectory, "links");
+        IconsDirectory = Path.Combine(DataDirectory, "icons");
+    }
+
+    /// <summary>Where images chosen as icons are copied to.</summary>
+    public string IconsDirectory { get; }
+
+    /// <summary>Copies an image into <see cref="IconsDirectory"/> under a new name and returns the copy's path.</summary>
+    public string ImportIcon(string source)
+    {
+        Directory.CreateDirectory(IconsDirectory);
+        var copy = Path.Combine(IconsDirectory, Guid.NewGuid().ToString("N") + Path.GetExtension(source).ToLowerInvariant());
+        File.Copy(source, copy);
+        return copy;
+    }
+
+    /// <summary>Deletes an icon copy that is no longer used; images outside <see cref="IconsDirectory"/> are left alone.</summary>
+    public void DeleteIcon(string? path)
+    {
+        if (path is null || !Path.IsPathRooted(path)) return;
+        var full = Path.GetFullPath(path);
+        if (!full.StartsWith(IconsDirectory + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) return;
+        try
+        {
+            File.Delete(full);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A leftover image does no harm; it is only an unused file in the app folder.
+        }
     }
 
     public string DataDirectory { get; }
@@ -76,6 +105,7 @@ public sealed class ItemStore
             var group = LauncherItem.CreateGroup(dto.Name ?? "グループ");
             group.IsExpanded = dto.Expanded ?? false;
             if (dto.Tags is not null) group.SetTags(dto.Tags);
+            group.CustomIcon = dto.Icon is null ? null : ToAbsolute(dto.Icon);
             tree.Insert(group, parent);
             foreach (var child in dto.Children) Add(tree, child, group);
         }
@@ -85,6 +115,7 @@ public sealed class ItemStore
             if (dto.Tags is not null) item.SetTags(dto.Tags);
             item.IsFavorite = dto.Favorite == true;
             item.RestoreLaunches(dto.LaunchCount ?? 0, dto.LastLaunched);
+            item.CustomIcon = dto.Icon is null ? null : ToAbsolute(dto.Icon);
             tree.Insert(item, parent);
         }
     }
@@ -92,13 +123,15 @@ public sealed class ItemStore
     private NodeDto ToDto(LauncherItem node)
     {
         var tags = node.Tags.Count > 0 ? node.Tags.ToList() : null;
+        var icon = node.CustomIcon is { } path ? ToStored(path) : null;
         return node.IsGroup
-            ? new NodeDto { Name = node.Name, Expanded = node.IsExpanded, Tags = tags, Children = node.Children.Select(ToDto).ToList() }
+            ? new NodeDto { Name = node.Name, Expanded = node.IsExpanded, Tags = tags, Icon = icon, Children = node.Children.Select(ToDto).ToList() }
             : new NodeDto
             {
                 Name = node.Name,
                 Path = ToStored(node.Path),
                 Tags = tags,
+                Icon = icon,
                 Favorite = node.IsFavorite ? true : null,
                 LaunchCount = node.LaunchCount > 0 ? node.LaunchCount : null,
                 LastLaunched = node.LaunchCount > 0 ? node.LastLaunched : null,
@@ -131,6 +164,8 @@ public sealed class ItemStore
         public List<NodeDto>? Children { get; set; }
 
         public List<string>? Tags { get; set; }
+
+        public string? Icon { get; set; }
 
         public bool? Favorite { get; set; }
 

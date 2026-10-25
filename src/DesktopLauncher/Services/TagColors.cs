@@ -40,6 +40,8 @@ public sealed class TagColors
 
     public static int Count => Palette.Length;
 
+    public static Color ColorAt(int index) => Palette[index % Palette.Length];
+
     /// <summary>Set when an assignment was added or removed since the last save.</summary>
     public bool Changed { get; set; }
 
