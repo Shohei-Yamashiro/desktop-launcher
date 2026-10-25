@@ -41,6 +41,15 @@
 
         <Border Height="1" Margin="0,16" Background="{StaticResource LineBrush}" />
 
+        <DockPanel>
+            <Button x:Name="ImportBookmarksButton" DockPanel.Dock="Right" Content="取り込む…" MinWidth="88" Click="ImportBookmarks_Click" />
+            <TextBlock Text="ブラウザのブックマーク" VerticalAlignment="Center" />
+        </DockPanel>
+        <TextBlock Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12" LineHeight="19" Style="{StaticResource SecondaryText}"
+                   Text="Edge・Chrome などのブックマーク（Edge の「お気に入り」）を、新しいグループとして取り込みます。" />
+
+        <Border Height="1" Margin="0,16" Background="{StaticResource LineBrush}" />
+
         <CheckBox x:Name="StartupBox" Content="Windows 起動時に開始" />
         <TextBlock Margin="26,6,0,0" TextWrapping="Wrap" FontSize="12" LineHeight="19" Style="{StaticResource SecondaryText}"
                    Text="オンにすると、Windows のスタートアップ（レジストリの HKCU\…\Run）に登録します。" />

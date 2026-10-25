@@ -64,6 +64,36 @@ public static class SampleData
         return dataDirectory;
     }
 
+    /// <summary>A fictional Chromium "Bookmarks" file for the import dialog, so no real browser data is shown.</summary>
+    public static string WriteBookmarks(string baseDirectory)
+    {
+        var path = Path.Combine(baseDirectory, "サンプル", "Bookmarks");
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        System.IO.File.WriteAllText(path, """
+            {
+              "roots": {
+                "bookmark_bar": { "name": "お気に入りバー", "type": "folder", "children": [
+                  { "name": "勤怠システム", "type": "url", "url": "https://kintai.example.com/" },
+                  { "name": "経費精算", "type": "url", "url": "https://keihi.example.com/" },
+                  { "name": "社内", "type": "folder", "children": [
+                    { "name": "社内ポータル", "type": "url", "url": "https://portal.example.com/" },
+                    { "name": "規程集", "type": "url", "url": "https://rules.example.com/" }
+                  ] }
+                ] },
+                "other": { "name": "その他のお気に入り", "type": "folder", "children": [
+                  { "name": "ニュース", "type": "url", "url": "https://news.example.com/" },
+                  { "name": "天気", "type": "url", "url": "https://weather.example.com/" },
+                  { "name": "趣味", "type": "folder", "children": [
+                    { "name": "料理レシピ", "type": "url", "url": "https://recipe.example.com/" }
+                  ] }
+                ] },
+                "synced": { "name": "モバイルのお気に入り", "type": "folder", "children": [] }
+              }
+            }
+            """);
+        return path;
+    }
+
     private static Node Group(string name, string[] tags, params Node[] children) =>
         new() { Name = name, Expanded = true, Tags = [.. tags], Children = [.. children] };
 

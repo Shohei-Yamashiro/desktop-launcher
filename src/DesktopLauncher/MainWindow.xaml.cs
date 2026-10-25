@@ -883,6 +883,8 @@ public partial class MainWindow : Window
             menu.Items.Add(new Separator());
             menu.Items.Add(MenuItem("すべてのグループを開く", () => SetExpanded(true, null)));
             menu.Items.Add(MenuItem("すべてのグループを閉じる", () => SetExpanded(false, null)));
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuItem("ブラウザのブックマークを取り込む…", () => ImportBookmarks(this)));
             return menu;
         }
 
@@ -1268,9 +1270,32 @@ public partial class MainWindow : Window
 
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new SettingsWindow(_settingsStore, _settings, HotKey) { Owner = this };
+        var dialog = new SettingsWindow(_settingsStore, _settings, HotKey, ImportBookmarks) { Owner = this };
         if (WithModal(dialog.ShowDialog) == true) ApplyRowSpacing();
     }
+
+    /// <summary>Brings browser bookmarks in as one new group, opened from the list's menu or the settings.</summary>
+    private void ImportBookmarks(Window owner)
+    {
+        var dialog = new ImportBookmarksWindow(BrowserBookmarks.Find()) { Owner = owner };
+        if (WithModal(dialog.ShowDialog) != true) return;
+
+        var result = BookmarkImporter.Import(_tree, dialog.GroupName, dialog.Roots, dialog.Options);
+        var skipped = result.Skipped > 0 ? $"\n（登録済みの {result.Skipped} 件は取り込みませんでした）" : "";
+        if (result.Group is not { } group)
+        {
+            ShowInfo("取り込める URL がありませんでした。" + skipped);
+            return;
+        }
+
+        foreach (var node in _tree.All().Where(n => IsDescendant(n, group))) node.Icon = LoadIcon(node);
+        group.IsExpanded = true;
+        ShowAll();
+        Reselect(group);
+        ShowInfo($"{result.Added} 件のブックマークを「{group.Name}」グループに取り込みました。" + skipped);
+    }
+
+    private void ShowInfo(string message) => WithModal(() => MessageBox.Show(this, message, Title, MessageBoxButton.OK, MessageBoxImage.Information));
 
     private void ApplyRowSpacing()
     {
