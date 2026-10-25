@@ -27,6 +27,16 @@ public static class WebUrl
         return true;
     }
 
+    /// <summary>
+    /// Copied text counts as a URL only when it starts with http:// or https://, so that a copied host
+    /// name such as a mail server ("imap.example.com") is not taken for a web page.
+    /// </summary>
+    public static bool TryParseCopied(string? text, out string url)
+    {
+        url = "";
+        return IsWebUrl(text?.Trim() ?? "") && TryNormalize(text, out url);
+    }
+
     public static string DefaultName(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Host.Length > 0 ? uri.Host : url;
 
