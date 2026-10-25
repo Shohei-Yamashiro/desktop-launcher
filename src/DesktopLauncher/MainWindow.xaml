@@ -129,7 +129,6 @@
         </Style>
 
         <controls:TagBrushConverter x:Key="TagBrush" />
-        <BooleanToVisibilityConverter x:Key="VisibleWhenTrue" />
         <SolidColorBrush x:Key="FavoriteBrush" Color="#E3B860" />
 
         <!-- 「すべて」「お気に入り」… above the search box; the chosen one is bright and underlined. -->
@@ -162,14 +161,45 @@
             </Setter>
         </Style>
 
-        <!-- Star at the end of a favorite's row. -->
-        <Style x:Key="FavoriteStar" TargetType="TextBlock" BasedOn="{StaticResource Glyph}">
-            <Setter Property="Text" Value="&#xE735;" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Foreground" Value="{StaticResource FavoriteBrush}" />
-            <Setter Property="Margin" Value="8,0,0,0" />
-            <Setter Property="ToolTip" Value="お気に入り" />
-            <Setter Property="Visibility" Value="{Binding IsFavorite, Converter={StaticResource VisibleWhenTrue}}" />
+        <!-- Star at the start of a row; click to toggle. A favorite shows a filled star, other items an outline
+             only while the row is hovered. Groups keep the space empty so that icons stay aligned. -->
+        <Style x:Key="FavoriteStar" TargetType="Button">
+            <Setter Property="Tag" Value="star" />
+            <Setter Property="Width" Value="18" />
+            <Setter Property="Height" Value="20" />
+            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="ToolTip" Value="お気に入りに追加（Ctrl+D）" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="Transparent">
+                            <TextBlock x:Name="Glyph" Text="&#xE734;" Style="{StaticResource Glyph}" FontSize="12"
+                                       Foreground="{StaticResource TextTertiaryBrush}" Opacity="0" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=DockPanel}}" Value="True">
+                                <Setter TargetName="Glyph" Property="Opacity" Value="1" />
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource TextBrush}" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsFavorite}" Value="True">
+                                <Setter TargetName="Glyph" Property="Text" Value="&#xE735;" />
+                                <Setter TargetName="Glyph" Property="Foreground" Value="{StaticResource FavoriteBrush}" />
+                                <Setter TargetName="Glyph" Property="Opacity" Value="1" />
+                                <Setter Property="ToolTip" Value="お気に入りから外す（Ctrl+D）" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter Property="Visibility" Value="Hidden" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <!-- Name followed by the node's tags; tags that do not fit end in "…".
@@ -421,13 +451,13 @@
                         <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                             <Border Tag="row" Style="{StaticResource RowStyle}">
                                 <DockPanel>
+                                    <Button Style="{StaticResource FavoriteStar}" Click="FavoriteStar_Click" />
                                     <Grid Width="20" Height="20" Margin="0,0,10,0">
                                         <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" />
                                         <TextBlock Style="{StaticResource GroupGlyph}" />
                                     </Grid>
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding ChildCountText}" Style="{StaticResource MetaText}"
                                                Margin="8,0,0,0" />
-                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FavoriteStar}" />
                                     <controls:NameTagsPanel HorizontalAlignment="Left">
                                         <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
                                         <ItemsControl Style="{StaticResource RowTags}" />
@@ -455,10 +485,10 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <DockPanel>
+                                <Button Style="{StaticResource FavoriteStar}" Click="FavoriteStar_Click" />
                                 <Image Source="{Binding Icon}" Style="{StaticResource ItemIcon}" Margin="0,0,10,0" />
                                 <TextBlock DockPanel.Dock="Right" Text="{Binding Location}" Style="{StaticResource MetaText}"
                                            Margin="12,0,0,0" />
-                                <TextBlock DockPanel.Dock="Right" Style="{StaticResource FavoriteStar}" />
                                 <controls:NameTagsPanel HorizontalAlignment="Left">
                                     <TextBlock Text="{Binding Name}" Style="{StaticResource NameText}" />
                                     <ItemsControl Style="{StaticResource RowTags}" />

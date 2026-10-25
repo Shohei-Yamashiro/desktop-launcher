@@ -506,7 +506,7 @@ public partial class MainWindow : Window
 
     private void SearchItem_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left || Keyboard.Modifiers != ModifierKeys.None) return;
+        if (e.ChangedButton != MouseButton.Left || Keyboard.Modifiers != ModifierKeys.None || IsOnStar(e.OriginalSource)) return;
         if (sender is ListBoxItem { DataContext: LauncherItem node }) Launch(node);
     }
 
@@ -616,7 +616,7 @@ public partial class MainWindow : Window
     private void Tree_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _pressPoint = e.GetPosition(Tree);
-        _pressedNode = RowFrom(e.OriginalSource)?.Node;
+        _pressedNode = IsOnStar(e.OriginalSource) ? null : RowFrom(e.OriginalSource)?.Node;
         _collapseOnUp = false;
         if (_pressedNode is not { } node) return;
 
@@ -778,6 +778,23 @@ public partial class MainWindow : Window
             if (current is FrameworkElement { Tag: "row", DataContext: LauncherItem node } row) return (node, row);
         }
         return null;
+    }
+
+    /// <summary>The star at the start of a row toggles the favorite; it must not select, drag or launch the row.</summary>
+    private static bool IsOnStar(object source)
+    {
+        for (var current = source as DependencyObject; current is not null; current = ParentOf(current))
+        {
+            if (current is FrameworkElement { Tag: "star" }) return true;
+            if (current is FrameworkElement { Tag: "row" } or ListBoxItem or TreeViewItem) return false;
+        }
+        return false;
+    }
+
+    private void FavoriteStar_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: LauncherItem node }) ToggleFavorite([node]);
+        e.Handled = true;
     }
 
     private static LauncherItem? NodeFrom(object source)
