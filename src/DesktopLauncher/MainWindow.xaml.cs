@@ -12,6 +12,13 @@ using Microsoft.Win32;
 
 namespace DesktopLauncher;
 
+/// <summary>The tabs above the search box.</summary>
+public enum LauncherView
+{
+    All,
+    Favorites,
+}
+
 public partial class MainWindow : Window
 {
     private const string NodeFormat = "DesktopLauncher.Node";
@@ -29,6 +36,8 @@ public partial class MainWindow : Window
     private bool _dragging;
     private LauncherItem? _dropTarget;
     private string? _activeTag;
+
+    private LauncherView _view = LauncherView.All;
 
     private LauncherItem? _anchor;
     private bool _collapseOnUp;
@@ -52,8 +61,11 @@ public partial class MainWindow : Window
 
     public event Action? ClosedToTray;
 
-    /// <summary>The flat result list replaces the tree while text is typed or a tag is chosen.</summary>
-    private bool IsSearching => SearchBox.Text.Trim().Length > 0 || _activeTag is not null;
+    /// <summary>Text is typed or a tag is chosen.</summary>
+    private bool IsFiltering => SearchBox.Text.Trim().Length > 0 || _activeTag is not null;
+
+    /// <summary>The flat result list replaces the tree while filtering and on every tab but すべて.</summary>
+    private bool ShowsList => _view != LauncherView.All || IsFiltering;
 
     /// <summary>Screen rectangle the window opens from (the mini icon).</summary>
     public Func<Rect>? Anchor { get; set; }
@@ -125,6 +137,12 @@ public partial class MainWindow : Window
         if (e.Key == Key.V && Keyboard.Modifiers == ModifierKeys.Control && Keyboard.FocusedElement is not TextBox
             && PasteFromClipboard())
         {
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.Tab && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            SwitchTab(backward: Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
             e.Handled = true;
             return;
         }
@@ -216,6 +234,41 @@ public partial class MainWindow : Window
         if (_activeTag is not null) SetActiveTag(null);
     }
 
+    /// <summary>Back to the tree with no filter, so that something just added is in view.</summary>
+    private void ShowAll()
+    {
+        AllTab.IsChecked = true;
+        ClearFilter();
+    }
+
+    private void ViewTab_Checked(object sender, RoutedEventArgs e)
+    {
+        // Raised while the XAML is still loading, before the lists exist.
+        if (SearchList is null) return;
+        _view = FavoritesTab.IsChecked == true ? LauncherView.Favorites : LauncherView.All;
+        UpdateSearch();
+    }
+
+    /// <summary>Ctrl+Tab and Ctrl+Shift+Tab move between the tabs.</summary>
+    private void SwitchTab(bool backward)
+    {
+        RadioButton[] tabs = [AllTab, FavoritesTab];
+        var index = Array.FindIndex(tabs, t => t.IsChecked == true);
+        tabs[(index + (backward ? tabs.Length - 1 : 1)) % tabs.Length].IsChecked = true;
+    }
+
+    /// <summary>Adds the items to the favorites, or removes them when all of them already are.</summary>
+    private void ToggleFavorite(IReadOnlyList<LauncherItem> nodes)
+    {
+        var items = nodes.Where(n => !n.IsGroup).ToList();
+        if (items.Count == 0) return;
+
+        var favorite = !items.All(n => n.IsFavorite);
+        foreach (var item in items) item.IsFavorite = favorite;
+        if (_view == LauncherView.Favorites) UpdateSearch();
+        Save();
+    }
+
     /// <summary>One node: name, path or URL, and tags. Several nodes: their tags.</summary>
     private void Edit(IReadOnlyList<LauncherItem> nodes)
     {
@@ -238,7 +291,7 @@ public partial class MainWindow : Window
         }
         foreach (var node in nodes) node.ApplyTagChanges(dialog.AddedTags, dialog.RemovedTags);
         UpdateTagBar();
-        if (IsSearching) UpdateSearch();
+        if (ShowsList) UpdateSearch();
         Save();
     }
 
@@ -365,7 +418,7 @@ public partial class MainWindow : Window
     {
         // Hidden rows must not stay selected, or commands would act on them.
         SelectOnly(null);
-        if (!IsSearching)
+        if (!ShowsList)
         {
             SearchList.ItemsSource = null;
             SearchList.Visibility = Visibility.Collapsed;
@@ -373,7 +426,9 @@ public partial class MainWindow : Window
         }
         else
         {
-            var results = _tree.FindItems(SearchBox.Text, _activeTag).ToList();
+            var results = _tree.FindItems(SearchBox.Text, _activeTag)
+                .Where(n => _view != LauncherView.Favorites || n.IsFavorite)
+                .ToList();
             SearchList.ItemsSource = results;
             SearchList.SelectedIndex = -1;
             SearchList.Visibility = Visibility.Visible;
@@ -389,9 +444,11 @@ public partial class MainWindow : Window
             EmptyText.Text = "ここにファイルやフォルダー、URL をドラッグして追加できます。\nコピーしたものは Ctrl+V で貼り付けられます。「＋グループ」で階層を作れます。";
             EmptyText.Visibility = Visibility.Visible;
         }
-        else if (IsSearching && SearchList.Items.Count == 0)
+        else if (ShowsList && SearchList.Items.Count == 0)
         {
-            EmptyText.Text = "一致する項目がありません。";
+            EmptyText.Text = _view == LauncherView.Favorites && !IsFiltering
+                ? "お気に入りはまだありません。\n項目を右クリックして「お気に入りに追加」を選ぶか、Ctrl+D を押すと、ここに表示されます。"
+                : "一致する項目がありません。";
             EmptyText.Visibility = Visibility.Visible;
         }
         else
@@ -412,7 +469,7 @@ public partial class MainWindow : Window
             // Enter moves to the first result; a second Enter there launches it.
             case Key.Enter:
             case Key.Down:
-                if (IsSearching) FocusSearchResult();
+                if (ShowsList) FocusSearchResult();
                 else FocusTree();
                 e.Handled = true;
                 break;
@@ -539,6 +596,10 @@ public partial class MainWindow : Window
                 break;
             case Key.Delete:
                 Remove(selection);
+                e.Handled = true;
+                break;
+            case Key.D when Keyboard.Modifiers == ModifierKeys.Control:
+                ToggleFavorite(selection);
                 e.Handled = true;
                 break;
             case Key.F2:
@@ -801,6 +862,7 @@ public partial class MainWindow : Window
         {
             menu.Items.Add(MenuItem("開く", () => Launch(node), bold: true));
             menu.Items.Add(MenuItem("ファイルの場所を開く", () => OpenLocation(node)));
+            menu.Items.Add(MenuItem(node.IsFavorite ? "お気に入りから外す" : "お気に入りに追加", () => ToggleFavorite([node]), gesture: "Ctrl+D"));
         }
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("編集…", () => Edit([node]), gesture: "F2"));
@@ -821,6 +883,12 @@ public partial class MainWindow : Window
         menu.Items.Add(MenuItem($"{nodes.Count} 件を選択中", () => { }, enabled: false));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("タグを編集…", () => Edit(nodes), gesture: "F2"));
+        var items = nodes.Where(n => !n.IsGroup).ToList();
+        if (items.Count > 0)
+        {
+            menu.Items.Add(MenuItem(items.All(n => n.IsFavorite) ? "お気に入りから外す" : "お気に入りに追加",
+                () => ToggleFavorite(nodes), gesture: "Ctrl+D"));
+        }
         menu.Items.Add(BuildMoveMenu(nodes));
         menu.Items.Add(new Separator());
         menu.Items.Add(MenuItem("ランチャーから削除", () => Remove(nodes), gesture: "Delete"));
@@ -926,7 +994,7 @@ public partial class MainWindow : Window
         var group = LauncherItem.CreateGroup(dialog.NewName);
         group.IsExpanded = true;
         _tree.Insert(group, parent);
-        ClearFilter();
+        ShowAll();
         Reselect(group);
     }
 
@@ -936,7 +1004,7 @@ public partial class MainWindow : Window
         var dialog = new UrlWindow { Owner = this };
         if (WithModal(dialog.ShowDialog) != true) return;
 
-        ClearFilter();
+        ShowAll();
         AddPaths([dialog.Url], parent, -1, dialog.ItemName);
     }
 
@@ -946,13 +1014,13 @@ public partial class MainWindow : Window
         var parent = TargetGroupForAdd();
         if (ClipboardContent.Files() is { Length: > 0 } files)
         {
-            ClearFilter();
+            ShowAll();
             AddDroppedPaths(files, parent, -1);
             return true;
         }
         if (ClipboardContent.Url() is { } url)
         {
-            ClearFilter();
+            ShowAll();
             AddPaths([url], parent, -1);
             return true;
         }
@@ -1027,8 +1095,8 @@ public partial class MainWindow : Window
     /// <summary>Expands the paths to the nodes, selects them, and saves.</summary>
     private void Reselect(IReadOnlyList<LauncherItem> nodes)
     {
-        if (IsSearching) UpdateSearch();
-        var visible = IsSearching ? SearchList.Items.OfType<LauncherItem>().ToHashSet() : null;
+        if (ShowsList) UpdateSearch();
+        var visible = ShowsList ? SearchList.Items.OfType<LauncherItem>().ToHashSet() : null;
 
         foreach (var n in _tree.All()) n.IsSelected = false;
         foreach (var node in nodes)
@@ -1040,7 +1108,7 @@ public partial class MainWindow : Window
         if (nodes.Count > 0)
         {
             _anchor = nodes[0];
-            if (!IsSearching) SetCurrent(nodes[0]);
+            if (!ShowsList) SetCurrent(nodes[0]);
         }
         Save();
     }
@@ -1149,7 +1217,7 @@ public partial class MainWindow : Window
         foreach (var node in nodes) _tree.Remove(node);
         _anchor = null;
         UpdateTagBar();
-        if (IsSearching) UpdateSearch();
+        if (ShowsList) UpdateSearch();
         Save();
 
         foreach (var path in captured.Where(File.Exists)) ShortcutFiles.MoveToRecycleBin(path);

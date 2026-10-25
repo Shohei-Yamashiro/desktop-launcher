@@ -41,6 +41,36 @@ public sealed class ItemStoreTests : IDisposable
     }
 
     [Fact]
+    public void SaveThenLoad_KeepsFavorites()
+    {
+        var store = new ItemStore(_dir);
+        var tree = new LauncherTree();
+        var group = LauncherItem.CreateGroup("仕事");
+        var memo = LauncherItem.CreateItem("メモ帳", @"C:\Windows\notepad.exe");
+        var calc = LauncherItem.CreateItem("電卓", @"C:\Windows\System32\calc.exe");
+        memo.IsFavorite = true;
+        tree.Insert(group, null);
+        tree.Insert(memo, group);
+        tree.Insert(calc, group);
+
+        store.Save(tree);
+        var loaded = new LauncherTree();
+        store.Load(loaded);
+
+        Assert.Equal(["メモ帳"], loaded.All().Where(n => n.IsFavorite).Select(n => n.Name).ToArray());
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(Path.Combine(_dir, "items.json")), "\"Favorite\""));
+    }
+
+    [Fact]
+    public void Favorite_IsOnlyForItems()
+    {
+        var group = LauncherItem.CreateGroup("仕事");
+
+        Assert.Throws<InvalidOperationException>(() => group.IsFavorite = true);
+        group.IsFavorite = false;
+    }
+
+    [Fact]
     public void Load_ReadsOldFlatFormat()
     {
         Directory.CreateDirectory(_dir);

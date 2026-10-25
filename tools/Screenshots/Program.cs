@@ -10,7 +10,7 @@ using DesktopLauncher.Services;
 namespace Screenshots;
 
 /// <summary>
-/// Usage: Screenshots.exe [output folder]. Writes main.png, search.png, edit.png, settings.png and logo.png
+/// Usage: Screenshots.exe [output folder]. Writes main.png, search.png, favorites.png, edit.png, settings.png and logo.png
 /// (default: docs\portfolio\images).
 /// The windows open on the screen for a few seconds while they are captured.
 /// </summary>
@@ -81,6 +81,12 @@ public static class Program
         WindowCapture.Save(Path.Combine(output, "search.png"), WindowCapture.Capture(main), layers);
         search.Clear();
         suggest.IsOpen = false;
+
+        // The お気に入り tab.
+        ((RadioButton)main.FindName("FavoritesTab")).IsChecked = true;
+        await Settle();
+        WindowCapture.Save(Path.Combine(output, "favorites.png"), WindowCapture.Capture(main));
+        ((RadioButton)main.FindName("AllTab")).IsChecked = true;
 
         // The edit dialog for an item with its own and inherited tags.
         var loaded = new LauncherTree();
