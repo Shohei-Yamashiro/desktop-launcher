@@ -1,12 +1,27 @@
 # Hashelf
 
 よく使うファイル・フォルダー・URL を登録して、`Ctrl + Alt + Space` で呼び出して開く Windows 用のランチャーです。
-グループによる階層、タグ（グループのタグは中の項目に継承）、名前・`#タグ` での検索に対応しています。
+グループによる階層、タグ（グループのタグは中の項目に継承）、名前・`#タグ` での検索、お気に入り・よく使うタブに対応しています。
 
 名前の表記は、画面のタイトルやロゴでは「#Hashelf」、製品名・exe・フォルダー・自動起動の登録名では「Hashelf」です。
 コードの名前空間とプロジェクトのフォルダーは、改名前の `DesktopLauncher` のままです。
 
-利用者向けの説明は [docs/distribution/README.txt](docs/distribution/README.txt)、利用条件は [docs/distribution/LICENSE.txt](docs/distribution/LICENSE.txt) にあります。
+## ダウンロード
+
+ビルド済みの zip は [GitHub Releases](https://github.com/Shohei-Yamashiro/desktop-launcher/releases) から入手できます（公開後）。
+展開して `Hashelf.exe` を実行してください（インストール不要・自己完結）。
+
+利用者向けの説明は [docs/distribution/README.txt](docs/distribution/README.txt)、案内 PDF の元は [docs/portfolio/guide.html](docs/portfolio/guide.html) にあります。
+
+Windows の SmartScreen 警告が出ることがあります（発行元の電子署名なし）。出所がこのリポジトリの Releases（または作者の案内）であることを確認のうえ実行してください。
+
+## ライセンス
+
+[MIT License](LICENSE) です。利用・改変・再配布は MIT の条件に従って自由に行えます。
+配布物に同梱する `LICENSE.txt` には、MIT 本文に加えてデータの取扱い（ローカル保存・外部通信なし）と無保証の補足を載せています。
+
+本ソフトウェアは現状のまま提供され、作者は明示または黙示を問わず一切の保証をしません。
+登録したファイル・フォルダー・URL を開く操作や、設定によるショートカットのごみ箱移動は、利用者の判断と責任で行ってください。
 
 ## 構成
 
@@ -14,15 +29,16 @@
 |---|---|
 | `src/DesktopLauncher/` | アプリ本体（WPF、.NET 10）。トレイアイコンだけ Windows Forms |
 | `tests/DesktopLauncher.Tests/` | xUnit のテスト |
-| `docs/distribution/` | 配布物に入れる README・利用条件・外部部品のライセンス表記の元 |
+| `docs/distribution/` | 配布物に入れる README・LICENSE・外部部品のライセンス表記の元 |
 | `docs/portfolio/` | 案内 PDF の元（`guide.html`）と画面写真（`images/`） |
 | `tools/Screenshots/` | 案内 PDF の画面写真を撮るツール（配布しない） |
 | `scripts/publish.ps1` | 配布用フォルダと zip を作る |
 | `scripts/build-docs.ps1` | `guide.html` を Edge で PDF にする |
 | `scripts/make-icon.ps1` | `Assets/app.ico`（ロゴ）を作り直す |
 
-データは exe の横の `data` フォルダ（`items.json`・`settings.json`・`links/`）に保存します。
+データは exe の横の `data` フォルダ（`items.json`・`settings.json`・`links/` など）に保存します。
 フォルダの外に書き込むのは、「Windows 起動時に開始」をオンにしたときのレジストリ（`HKCU\...\Run` の `Hashelf`）だけです。
+インターネットその他の外部とは通信しません。
 改名前の版が同じフォルダから `DesktopLauncher` の名前で登録していた場合は、起動時に `Hashelf` へ移します。
 
 ## ビルドとテスト
